@@ -76,7 +76,8 @@ server {
     }
     {{ else }}
     location / {
-        proxy_pass http://{{ index .Upstreams 0 }};
+        set $upstream_endpoint "http://{{ index .Upstreams 0 }}";
+        proxy_pass $upstream_endpoint;
         {{ range $k, $v := .ProxySetHeaders }}
         proxy_set_header {{ $k }} {{ $v }};
         {{ end }}
@@ -109,7 +110,8 @@ server {
     ssl_certificate_key /etc/letsencrypt/live/{{ .Domain }}/privkey.pem;
 
     location / {
-        proxy_pass http://{{ index .Upstreams 0 }};
+        set $upstream_endpoint "http://{{ index .Upstreams 0 }}";
+        proxy_pass $upstream_endpoint;
         {{ range $k, $v := .ProxySetHeaders }}
         proxy_set_header {{ $k }} {{ $v }};
         {{ end }}

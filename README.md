@@ -53,11 +53,11 @@ curl -X POST http://localhost:6000/v1/sites \
 curl -X POST http://localhost:6000/v1/sites \
   -H "Content-Type: application/json" \
   -d '{
-    "id": "secure-site",
-    "domain": "testing-3.hubfly.app",
+    "id": "secure-site-1",
+    "domain": "testing-33.hubfly.app",
     "upstreams": ["dazzling_roentgen:80"],
-    "ssl": false,
-    "force_ssl": false,
+    "ssl": true,
+    "force_ssl": true,
     "templates": ["security-headers"]
   }'
 ```
