@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  hubfly:
+    build: .
+    container_name: hubfly
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080" # Management API
+    volumes:
+      - hubfly_data:/etc/hubfly
+      - certs:/etc/letsencrypt
+      - webroot:/var/www/hubfly
+    environment:
+      - TZ=UTC
+
+volumes:
+  hubfly_data:
+  certs:
+  webroot:
