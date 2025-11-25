@@ -14,7 +14,7 @@ import (
 
 func main() {
 	configDir := flag.String("config-dir", "/etc/hubfly", "Directory for config and data")
-	port := flag.String("port", "8080", "API listening port")
+	port := flag.String("port", "6000", "API listening port")
 	flag.Parse()
 
 	// Ensure config dir exists

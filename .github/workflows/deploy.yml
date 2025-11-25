@@ -1,8 +1,6 @@
 name: Deploy to Docker Hub and Server
 
 on:
-  push:
-    branches: ["main"]
   workflow_dispatch:
 
 env:
@@ -54,7 +52,7 @@ jobs:
               --restart unless-stopped \
               -p 80:80 \
               -p 443:443 \
-              -p 8080:8080 \
+              -p 6000:6000 \
               -v hubfly_data:/etc/hubfly \
               -v certs:/etc/letsencrypt \
               -v webroot:/var/www/hubfly \

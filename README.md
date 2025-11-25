@@ -15,7 +15,7 @@ The easiest way to run Hubfly is using Docker Compose. This sets up the API, NGI
 docker-compose up --build
 ```
 
-- **API**: `http://localhost:8080`
+- **API**: `http://localhost:6000`
 - **HTTP**: Port `80`
 - **HTTPS**: Port `443`
 
@@ -28,13 +28,13 @@ Here are `curl` commands to interact with the API.
 ### 1. Check Health
 Verify the service is running.
 ```bash
-curl -i http://localhost:8080/v1/health
+curl -i http://localhost:6000/v1/health
 ```
 
 ### 2. Create a Simple Site (HTTP)
 Forward traffic from `example.local` to a local upstream (e.g., a container IP or external site).
 ```bash
-curl -X POST http://localhost:8080/v1/sites \
+curl -X POST http://localhost:6000/v1/sites \
   -H "Content-Type: application/json" \
   -d '{
     "id": "my-site",
@@ -50,7 +50,7 @@ curl -X POST http://localhost:8080/v1/sites \
 ### 3. Create a Site with SSL (Production)
 **Prerequisite:** The domain must point to this server's public IP, and port 80/443 must be open.
 ```bash
-curl -X POST http://localhost:8080/v1/sites \
+curl -X POST http://localhost:6000/v1/sites \
   -H "Content-Type: application/json" \
   -d '{
     "id": "secure-site",
@@ -65,21 +65,21 @@ curl -X POST http://localhost:8080/v1/sites \
 ### 4. List All Sites
 See all configured sites and their status.
 ```bash
-curl http://localhost:8080/v1/sites
+curl http://localhost:6000/v1/sites
 ```
 
 ### 5. Get Site Details
 View configuration for a specific site.
 ```bash
-curl http://localhost:8080/v1/sites/my-site
+curl http://localhost:6000/v1/sites/my-site
 ```
 
 ### 6. Delete a Site
 Remove the NGINX config. Add `?revoke_cert=true` to also revoke the SSL certificate.
 ```bash
-curl -X DELETE http://localhost:8080/v1/sites/my-site
+curl -X DELETE http://localhost:6000/v1/sites/my-site
 # OR with revocation
-# curl -X DELETE "http://localhost:8080/v1/sites/secure-site?revoke_cert=true"
+# curl -X DELETE "http://localhost:6000/v1/sites/secure-site?revoke_cert=true"
 ```
 
 ---

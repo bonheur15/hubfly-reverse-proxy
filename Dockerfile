@@ -1,9 +1,9 @@
 # Stage 1: Builder
 FROM golang:1.25-alpine AS builder
 WORKDIR /src
-COPY go.mod ./ 
-# COPY go.sum ./ 
-RUN go mod download || true 
+COPY go.mod ./
+# COPY go.sum ./
+RUN go mod download || true
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/hubfly ./cmd/hubfly
 
@@ -30,7 +30,7 @@ RUN mkdir -p /etc/hubfly/sites /etc/hubfly/staging /etc/hubfly/templates \
 COPY ./templates /etc/hubfly/templates
 
 # Expose ports
-EXPOSE 80 443 8080
+EXPOSE 80 443 6000
 
 # Volume for persistence
 VOLUME ["/etc/letsencrypt", "/etc/hubfly", "/var/www/hubfly"]
