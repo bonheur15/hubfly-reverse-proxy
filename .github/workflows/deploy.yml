@@ -2,7 +2,7 @@ name: Deploy to Docker Hub and Server
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_dispatch:
 
 env:
@@ -42,11 +42,11 @@ jobs:
           script: |
             # Pull the new image
             docker pull ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
-            
+
             # Stop and remove the existing container if it exists
             docker stop ${{ env.CONTAINER_NAME }} || true
             docker rm ${{ env.CONTAINER_NAME }} || true
-            
+
             # Run the new container
             # Replicating settings from docker-compose.yml
             docker run -d \
@@ -60,6 +60,3 @@ jobs:
               -v webroot:/var/www/hubfly \
               -e TZ=UTC \
               ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
-            
-            # Clean up unused images to save space
-            docker image prune -f
