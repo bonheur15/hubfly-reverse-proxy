@@ -55,7 +55,7 @@ curl -X POST http://localhost:6000/v1/sites \
   -d '{
     "id": "secure-site-1",
     "domain": "testing-33.hubfly.app",
-    "upstreams": ["dazzling_roentgen:80"],
+    "upstreams": ["youthful_margulis:80"],
     "ssl": true,
     "force_ssl": true,
     "templates": ["security-headers"]
@@ -77,7 +77,7 @@ curl http://localhost:6000/v1/sites/my-site
 ### 6. Delete a Site
 Remove the NGINX config. Add `?revoke_cert=true` to also revoke the SSL certificate.
 ```bash
-curl -X DELETE http://localhost:6000/v1/sites/my-site
+curl -X DELETE http://localhost:6000/v1/sites/secure-site-1?revoke_cert=true
 # OR with revocation
 # curl -X DELETE "http://localhost:6000/v1/sites/secure-site?revoke_cert=true"
 ```
