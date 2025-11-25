@@ -36,8 +36,7 @@ func main() {
 
 	// Initialize Certbot Manager
 	// We assume webroot at /var/www/hubfly as per design
-	cm := certbot.NewManager("/var/www/hubfly", "admin@example.com")
-	// In real app, email should be configurable per site or global config
+	cm := certbot.NewManager("/var/www/hubfly", "cert-support@hubfly.app")
 
 	// Initialize API Server
 	srv := api.NewServer(st, nm, cm)

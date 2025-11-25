@@ -37,11 +37,11 @@ Forward traffic from `example.local` to a local upstream (e.g., a container IP o
 curl -X POST http://localhost:6000/v1/sites \
   -H "Content-Type: application/json" \
   -d '{
-    "id": "my-site",
-    "domain": "example.local",
-    "upstreams": ["127.0.0.1:9000"],
-    "ssl": false,
-    "force_ssl": false,
+    "id": "my-site-4",
+    "domain": "testing-3333.hubfly.app",
+    "upstreams": ["127.0.0.1:9020"],
+    "ssl": true,
+    "force_ssl": true,
     "templates": ["security-headers"]
   }'
 ```

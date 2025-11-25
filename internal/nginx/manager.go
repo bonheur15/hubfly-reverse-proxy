@@ -91,6 +91,12 @@ server {
         root /var/www/hubfly;
         try_files $uri =404;
     }
+
+    error_page 502 504 /502.html;
+    location = /502.html {
+        root /var/www/hubfly/static;
+        internal;
+    }
 }
 
 {{ if .SSL }}
@@ -109,6 +115,12 @@ server {
         
         {{ .TemplateSnippets }}
         {{ .ExtraConfig }}
+    }
+
+    error_page 502 504 /502.html;
+    location = /502.html {
+        root /var/www/hubfly/static;
+        internal;
     }
 }
 {{ end }}
