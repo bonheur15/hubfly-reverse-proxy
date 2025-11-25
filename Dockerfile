@@ -1,8 +1,8 @@
 # Stage 1: Builder
 FROM golang:1.25-alpine AS builder
 WORKDIR /src
-COPY go.mod ./
-# COPY go.sum ./ # No go.sum yet as we haven't run tidy/get with network, but good practice
+COPY go.mod ./ 
+# COPY go.sum ./ 
 RUN go mod download || true 
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/hubfly ./cmd/hubfly
@@ -15,12 +15,19 @@ RUN apk add --no-cache certbot openssl bash ca-certificates
 # Copy binary
 COPY --from=builder /out/hubfly /usr/local/bin/hubfly
 
-# Copy default nginx config (wrapper)
+# Copy default nginx config
 COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
+
+# Copy startup script
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
 
 # Create necessary directories
 RUN mkdir -p /etc/hubfly/sites /etc/hubfly/staging /etc/hubfly/templates \
     /var/www/hubfly /var/log/hubfly /var/cache/nginx
+
+# Copy templates
+COPY ./templates /etc/hubfly/templates
 
 # Expose ports
 EXPOSE 80 443 8080
@@ -29,4 +36,4 @@ EXPOSE 80 443 8080
 VOLUME ["/etc/letsencrypt", "/etc/hubfly", "/var/www/hubfly"]
 
 # Entrypoint
-CMD ["/usr/local/bin/hubfly", "--config-dir", "/etc/hubfly"]
+CMD ["/start.sh"]
