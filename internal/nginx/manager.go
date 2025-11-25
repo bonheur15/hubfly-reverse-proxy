@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	"github.com/hubfly/hubfly-reverse-proxy/internal/models"
@@ -40,6 +41,28 @@ func (m *Manager) EnsureDirs() error {
 
 // GenerateConfig renders the site config to a staging file.
 func (m *Manager) GenerateConfig(site *models.Site) (string, error) {
+	// Load templates
+	var templateContent strings.Builder
+	for _, tplName := range site.Templates {
+		content, err := os.ReadFile(filepath.Join(m.TemplatesDir, tplName+".conf"))
+		if err != nil {
+			// For MVP, we might log warning but here we fail
+			// If template not found, maybe ignore? stricter is better.
+			return "", fmt.Errorf("failed to load template %s: %w", tplName, err)
+		}
+		templateContent.Write(content)
+		templateContent.WriteString("\n")
+	}
+
+	// Wrapper for template data
+	data := struct {
+		*models.Site
+		TemplateSnippets string
+	}{
+		Site:             site,
+		TemplateSnippets: templateContent.String(),
+	}
+
 	// Basic server block template
 	// In a real app, this might be loaded from a file.
 	const serverTmpl = `
@@ -58,6 +81,7 @@ server {
         proxy_set_header {{ $k }} {{ $v }};
         {{ end }}
         
+        {{ .TemplateSnippets }}
         {{ .ExtraConfig }}
     }
     {{ end }}
@@ -83,6 +107,7 @@ server {
         proxy_set_header {{ $k }} {{ $v }};
         {{ end }}
         
+        {{ .TemplateSnippets }}
         {{ .ExtraConfig }}
     }
 }
@@ -97,7 +122,7 @@ server {
 	}
 
 	var buf bytes.Buffer
-	if err := t.Execute(&buf, site); err != nil {
+	if err := t.Execute(&buf, data); err != nil {
 		return "", err
 	}
 
