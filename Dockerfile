@@ -28,6 +28,7 @@ RUN mkdir -p /etc/hubfly/sites /etc/hubfly/staging /etc/hubfly/templates \
 
 # Copy templates
 COPY ./templates /etc/hubfly/templates
+COPY ./static /var/www/hubfly/static
 
 # Expose ports
 EXPOSE 80 443 6000
