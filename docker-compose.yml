@@ -15,8 +15,14 @@ services:
       - webroot:/var/www/hubfly
     environment:
       - TZ=UTC
+    networks:
+      - hubfly-network
 
 volumes:
   hubfly_data:
   certs:
   webroot:
+
+networks:
+  hubfly-network:
+    driver: bridge

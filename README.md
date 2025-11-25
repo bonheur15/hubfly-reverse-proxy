@@ -38,7 +38,7 @@ curl -X POST http://localhost:6000/v1/sites \
   -H "Content-Type: application/json" \
   -d '{
     "id": "my-site-4",
-    "domain": "testing-3333.hubfly.app",
+    "domain": "example.local",
     "upstreams": ["127.0.0.1:9020"],
     "ssl": true,
     "force_ssl": true,
