@@ -101,7 +101,8 @@ server {
 
 {{ if .SSL }}
 server {
-    listen 443 ssl http2;
+    listen 443 ssl;
+    http2 on;
     server_name {{ .Domain }};
 
     ssl_certificate /etc/letsencrypt/live/{{ .Domain }}/fullchain.pem;

@@ -54,8 +54,8 @@ curl -X POST http://localhost:6000/v1/sites \
   -H "Content-Type: application/json" \
   -d '{
     "id": "secure-site",
-    "domain": "mysite.com",
-    "upstreams": ["10.0.0.5:3000"],
+    "domain": "testing-33335.hubfly.app",
+    "upstreams": ["127.0.0.1:9020"],
     "ssl": true,
     "force_ssl": true,
     "templates": ["basic-caching", "security-headers"]
