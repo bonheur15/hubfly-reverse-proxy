@@ -2,7 +2,7 @@
 
 A lightweight, single container reverse proxy appliance wrapping NGINX and Certbot with a Go based REST API. It provides safe, atomic configuration management and automated SSL certificate handling.
 
-## 🚀 How to Run
+## How to Run
 
 The easiest way to run Hubfly is using Docker Compose. This sets up the API, NGINX, and necessary volumes.
 
@@ -21,7 +21,7 @@ docker-compose up --build
 
 ---
 
-## 🧪 API Usage & Testing
+## API Usage & Testing
 
 Here are `curl` commands to interact with the API.
 
@@ -49,16 +49,16 @@ curl -X POST http://localhost:6000/v1/sites \
 
 ### 3. Create a Site with SSL (Production)
 **Prerequisite:** The domain must point to this server's public IP, and port 80/443 must be open.
-```bash
+```bash "basic-caching", 
 curl -X POST http://localhost:6000/v1/sites \
   -H "Content-Type: application/json" \
   -d '{
     "id": "secure-site",
-    "domain": "testing-33335.hubfly.app",
-    "upstreams": ["127.0.0.1:9020"],
-    "ssl": true,
-    "force_ssl": true,
-    "templates": ["basic-caching", "security-headers"]
+    "domain": "testing-3.hubfly.app",
+    "upstreams": ["dazzling_roentgen:80"],
+    "ssl": false,
+    "force_ssl": false,
+    "templates": ["security-headers"]
   }'
 ```
 
@@ -84,7 +84,7 @@ curl -X DELETE http://localhost:6000/v1/sites/my-site
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 - **/cmd/hubfly**: Main entry point.
 - **/internal/api**: REST API handlers and routing.
