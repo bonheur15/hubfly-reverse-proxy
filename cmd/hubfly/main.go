@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 
 	"github.com/hubfly/hubfly-reverse-proxy/internal/api"
 	"github.com/hubfly/hubfly-reverse-proxy/internal/certbot"
