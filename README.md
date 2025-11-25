@@ -1,6 +1,6 @@
 # hubfly-reverse-proxy
 
-A lightweight, single-container reverse proxy appliance wrapping NGINX and Certbot with a Go-based REST API. It provides safe, atomic configuration management and automated SSL certificate handling.
+A lightweight, single container reverse proxy appliance wrapping NGINX and Certbot with a Go based REST API. It provides safe, atomic configuration management and automated SSL certificate handling.
 
 ## 🚀 How to Run
 
