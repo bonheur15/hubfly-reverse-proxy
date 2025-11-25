@@ -46,14 +46,14 @@ jobs:
             docker rm ${{ env.CONTAINER_NAME }} || true
 
             # Create network if it doesn't exist
-            docker network create hubfly-network || true
+            docker network create hubfly-proxy-network || true
 
             # Run the new container
             # Replicating settings from docker-compose.yml
             docker run -d \
               --name ${{ env.CONTAINER_NAME }} \
               --restart unless-stopped \
-              --network hubfly-network \
+              --network hubfly-proxy-network \
               -p 80:80 \
               -p 443:443 \
               -p 6000:6000 \
