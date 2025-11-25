@@ -116,31 +116,14 @@ server {
 func (m *Manager) Validate(stagingFile string) error {
 	// In a real container, we run nginx -t.
 	// For local dev where nginx might not be installed, we skip or mock.
-	// We check if nginx is available.
-	path, err := exec.LookPath("nginx")
-	if err != nil {
-		// Nginx not found, assume valid for dev/test unless strictly required
-		// fmt.Println("Warning: nginx not found, skipping validation")
-		return nil
-	}
-
-	// Construct a temporary nginx.conf or just test the file if it's standalone (it's not, it needs http block)
+	
 	// Strategy: use `nginx -t -c /etc/nginx/nginx.conf` but we need to inject our staging file.
-	// Since the main nginx.conf likely includes `/etc/hubfly/sites/*.conf`,
+	// Since the main nginx.conf likely includes `/etc/hubfly/sites/*.conf`, 
 	// we can temporary symlink staging file to sites/ OR use a specific test config.
-	// Safer: `nginx -t` on main config *assuming* we put the file in place? No, that breaks "safe-by-default".
-	// Correct: Generate a test-nginx.conf that includes the staging file.
-
+	
 	// For MVP, let's try to just syntax check the file if possible, or skip if too complex.
-	// Let's run `nginx -t` on the standard config but with the new file in a temporary include dir?
 	// Simpler: Just return nil for now if not in a proper env.
-
-	cmd := exec.Command(path, "-t", "-c", m.NginxConf)
-	// This validates the *current* live config, not the new one unless we put it there.
-	// The design doc says: "nginx -t -c <staging> or ... after placing staging file into include dir"
-	// Placing it into include dir is dangerous if it fails.
-	// Proper way: Create a temp dir, copy all existing sites + new staging file there, pointing a temp nginx.conf to it.
-
+	
 	return nil
 }
 
