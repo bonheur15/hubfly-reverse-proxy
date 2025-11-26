@@ -151,30 +151,106 @@ server {
 	return stagingFile, nil
 }
 
-// GenerateStreamConfig renders the stream config to a staging file.
-func (m *Manager) GenerateStreamConfig(stream *models.Stream) (string, error) {
-	const streamTmpl = `
-server {
-    listen {{ .ListenPort }} {{ if eq .Protocol "udp" }}udp{{ end }};
-    proxy_pass {{ .Upstream }};
-}
-`
-	t, err := template.New("stream").Parse(streamTmpl)
-	if err != nil {
-		return "", err
+// RebuildStreamConfig generates the config for a specific port, handling multiple SNI streams.
+func (m *Manager) RebuildStreamConfig(port int, streams []models.Stream) error {
+	if len(streams) == 0 {
+		return m.DeleteStreamConfig(port)
+	}
+
+	// Check if we need SNI routing
+	// If multiple streams, or the single stream has a domain, we use SNI.
+	// Exception: UDP cannot use ssl_preread (DTLS is complex, assume TCP for SNI).
+	useSNI := false
+	if len(streams) > 1 {
+		useSNI = true
+	} else if streams[0].Domain != "" {
+		useSNI = true
 	}
 
 	var buf bytes.Buffer
-	if err := t.Execute(&buf, stream); err != nil {
-		return "", err
+	
+	// Simple Pass-through (No SNI, Single Stream)
+	if !useSNI {
+		s := streams[0]
+		proto := ""
+		if s.Protocol == "udp" {
+			proto = " udp"
+		}
+		
+		// Plain server block
+		// We use a variable for upstream to prevent boot errors if container is down (requires resolver)
+		// But variables aren't allowed in 'upstream' directive, but can be used in proxy_pass
+		tmpl := `
+server {
+    listen {{ .ListenPort }}{{ .Proto }};
+    proxy_pass {{ .Upstream }};
+}
+`
+		data := struct {
+			ListenPort int
+			Proto      string
+			Upstream   string
+		}{
+			ListenPort: s.ListenPort,
+			Proto:      proto,
+			Upstream:   s.Upstream,
+		}
+		
+		t, _ := template.New("simple_stream").Parse(tmpl)
+		if err := t.Execute(&buf, data); err != nil {
+			return err
+		}
+	} else {
+		// SNI Routing (TCP only usually)
+		// 1. Map block
+		// 2. Server block with ssl_preread
+		
+		// Map name needs to be unique per port
+		mapName := fmt.Sprintf("stream_map_%d", port)
+		
+		buf.WriteString(fmt.Sprintf("map $ssl_preread_server_name $%s {\n", mapName))
+		for _, s := range streams {
+			if s.Domain != "" {
+				buf.WriteString(fmt.Sprintf("    %s %s;\n", s.Domain, s.Upstream))
+			} else {
+				// Default/Catch-all if one is missing domain? 
+				// Or explicit default. For now, let's map "." (if supported) or use default clause
+			}
+		}
+		// If there's a stream with empty domain, make it default?
+		var defaultStream *models.Stream
+		for _, s := range streams {
+			if s.Domain == "" {
+				defaultStream = &s
+				break
+			}
+		}
+		if defaultStream != nil {
+			buf.WriteString(fmt.Sprintf("    default %s;\n", defaultStream.Upstream))
+		}
+		buf.WriteString("}\n\n")
+
+		buf.WriteString("server {\n")
+		buf.WriteString(fmt.Sprintf("    listen %d;\n", port))
+		buf.WriteString("    ssl_preread on;\n")
+		buf.WriteString(fmt.Sprintf("    proxy_pass $%s;\n", mapName))
+		buf.WriteString("}\n")
 	}
 
-	stagingFile := filepath.Join(m.StagingDir, stream.ID+".stream.conf")
-	if err := os.WriteFile(stagingFile, buf.Bytes(), 0644); err != nil {
-		return "", err
+	configFile := filepath.Join(m.StreamsDir, fmt.Sprintf("port_%d.conf", port))
+	if err := os.WriteFile(configFile, buf.Bytes(), 0644); err != nil {
+		return err
 	}
 
-	return stagingFile, nil
+	return m.Reload()
+}
+
+func (m *Manager) DeleteStreamConfig(port int) error {
+	target := filepath.Join(m.StreamsDir, fmt.Sprintf("port_%d.conf", port))
+	if err := os.Remove(target); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return m.Reload()
 }
 
 // Validate runs nginx -t against the staging config
@@ -204,15 +280,6 @@ func (m *Manager) Apply(siteID, stagingFile string) error {
 	return m.Reload()
 }
 
-// ApplyStream moves staging file to live streams dir and reloads
-func (m *Manager) ApplyStream(streamID, stagingFile string) error {
-	target := filepath.Join(m.StreamsDir, streamID+".conf")
-	if err := os.Rename(stagingFile, target); err != nil {
-		return err
-	}
-	return m.Reload()
-}
-
 func (m *Manager) Reload() error {
 	path, err := exec.LookPath("nginx")
 	if err != nil {
@@ -234,10 +301,5 @@ func (m *Manager) Delete(siteID string) error {
 	return m.Reload()
 }
 
-func (m *Manager) DeleteStream(streamID string) error {
-	target := filepath.Join(m.StreamsDir, streamID+".conf")
-	if err := os.Remove(target); err != nil && !os.IsNotExist(err) {
-		return err
-	}
-	return m.Reload()
-}
+// DeleteStream removed from here as we now manage by port via DeleteStreamConfig
+

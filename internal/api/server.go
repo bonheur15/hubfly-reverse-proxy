@@ -109,36 +109,63 @@ func (s *Server) handleStreamDetail(w http.ResponseWriter, r *http.Request) {
 		}
 		jsonResponse(w, 200, stream)
 	case http.MethodDelete:
-		if err := s.Nginx.DeleteStream(id); err != nil {
-			errorResponse(w, 500, "failed to remove nginx config: "+err.Error())
+		// Get stream to know the port
+		stream, err := s.Store.GetStream(id)
+		if err != nil {
+			errorResponse(w, 404, "stream not found")
 			return
 		}
+		port := stream.ListenPort
 
 		if err := s.Store.DeleteStream(id); err != nil {
 			errorResponse(w, 500, err.Error())
 			return
 		}
+
+		// Reconcile Nginx Config for this port
+		go s.reconcileStreams(port)
+
 		jsonResponse(w, 200, map[string]string{"status": "deleted"})
 	default:
 		http.Error(w, "method not allowed", 405)
 	}
 }
 
-func (s *Server) provisionStream(stream *models.Stream) {
-	staging, err := s.Nginx.GenerateStreamConfig(stream)
+func (s *Server) reconcileStreams(port int) {
+	// 1. List all streams
+	allStreams, err := s.Store.ListStreams()
 	if err != nil {
-		s.updateStreamStatus(stream.ID, "error", "config gen failed: "+err.Error())
+		log.Printf("reconcile error: failed to list streams: %v", err)
 		return
 	}
 
-	// Validate? (skip for now as per Manager)
+	// 2. Filter by port
+	var portStreams []models.Stream
+	for _, str := range allStreams {
+		if str.ListenPort == port {
+			portStreams = append(portStreams, str)
+		}
+	}
 
-	if err := s.Nginx.ApplyStream(stream.ID, staging); err != nil {
-		s.updateStreamStatus(stream.ID, "error", "apply failed: "+err.Error())
+	// 3. Rebuild Config
+	if err := s.Nginx.RebuildStreamConfig(port, portStreams); err != nil {
+		log.Printf("reconcile error: failed to rebuild config for port %d: %v", port, err)
+		// Update status for all affected streams?
+		// For MVP, we log. In production, we should update status of all portStreams to 'error'.
 		return
 	}
 
-	s.updateStreamStatus(stream.ID, "active", "")
+	// Success: Update status of these streams to active
+	for _, str := range portStreams {
+		if str.Status != "active" {
+			s.updateStreamStatus(str.ID, "active", "")
+		}
+	}
+}
+
+func (s *Server) provisionStream(stream *models.Stream) {
+	// Deprecated: use reconcileStreams
+	s.reconcileStreams(stream.ListenPort)
 }
 
 func (s *Server) updateStreamStatus(id, status, msg string) {

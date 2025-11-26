@@ -8,6 +8,7 @@ type Stream struct {
 	ListenPort   int       `json:"listen_port"` // Port to listen on host
 	Upstream     string    `json:"upstream"`    // host:port
 	Protocol     string    `json:"protocol"`    // "tcp" or "udp" (default tcp)
+	Domain       string    `json:"domain,omitempty"` // SNI Hostname (for TCP+TLS routing)
 	
 	Status       string    `json:"status"`
 	ErrorMessage string    `json:"error_message,omitempty"`
