@@ -14,6 +14,7 @@ import (
 
 type Manager struct {
 	SitesDir     string
+	StreamsDir   string
 	StagingDir   string
 	TemplatesDir string
 	NginxConf    string // Path to main nginx.conf
@@ -22,6 +23,7 @@ type Manager struct {
 func NewManager(baseDir string) *Manager {
 	return &Manager{
 		SitesDir:     filepath.Join(baseDir, "sites"),
+		StreamsDir:   filepath.Join(baseDir, "streams"),
 		StagingDir:   filepath.Join(baseDir, "staging"),
 		TemplatesDir: filepath.Join(baseDir, "templates"),
 		NginxConf:    "/etc/nginx/nginx.conf",
@@ -30,7 +32,7 @@ func NewManager(baseDir string) *Manager {
 
 // EnsureDirs creates necessary directories
 func (m *Manager) EnsureDirs() error {
-	dirs := []string{m.SitesDir, m.StagingDir, m.TemplatesDir}
+	dirs := []string{m.SitesDir, m.StreamsDir, m.StagingDir, m.TemplatesDir}
 	for _, d := range dirs {
 		if err := os.MkdirAll(d, 0755); err != nil {
 			return err
@@ -149,6 +151,32 @@ server {
 	return stagingFile, nil
 }
 
+// GenerateStreamConfig renders the stream config to a staging file.
+func (m *Manager) GenerateStreamConfig(stream *models.Stream) (string, error) {
+	const streamTmpl = `
+server {
+    listen {{ .ListenPort }} {{ if eq .Protocol "udp" }}udp{{ end }};
+    proxy_pass {{ .Upstream }};
+}
+`
+	t, err := template.New("stream").Parse(streamTmpl)
+	if err != nil {
+		return "", err
+	}
+
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, stream); err != nil {
+		return "", err
+	}
+
+	stagingFile := filepath.Join(m.StagingDir, stream.ID+".stream.conf")
+	if err := os.WriteFile(stagingFile, buf.Bytes(), 0644); err != nil {
+		return "", err
+	}
+
+	return stagingFile, nil
+}
+
 // Validate runs nginx -t against the staging config
 // Note: To validate a single include properly, we usually need to validate the whole nginx tree.
 // For MVP, we assume the staging file is valid if it parses.
@@ -176,6 +204,15 @@ func (m *Manager) Apply(siteID, stagingFile string) error {
 	return m.Reload()
 }
 
+// ApplyStream moves staging file to live streams dir and reloads
+func (m *Manager) ApplyStream(streamID, stagingFile string) error {
+	target := filepath.Join(m.StreamsDir, streamID+".conf")
+	if err := os.Rename(stagingFile, target); err != nil {
+		return err
+	}
+	return m.Reload()
+}
+
 func (m *Manager) Reload() error {
 	path, err := exec.LookPath("nginx")
 	if err != nil {
@@ -191,6 +228,14 @@ func (m *Manager) Reload() error {
 
 func (m *Manager) Delete(siteID string) error {
 	target := filepath.Join(m.SitesDir, siteID+".conf")
+	if err := os.Remove(target); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return m.Reload()
+}
+
+func (m *Manager) DeleteStream(streamID string) error {
+	target := filepath.Join(m.StreamsDir, streamID+".conf")
 	if err := os.Remove(target); err != nil && !os.IsNotExist(err) {
 		return err
 	}

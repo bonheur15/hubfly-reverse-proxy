@@ -15,29 +15,34 @@ type Store interface {
 	GetSite(id string) (*models.Site, error)
 	SaveSite(site *models.Site) error
 	DeleteSite(id string) error
+
+	ListStreams() ([]models.Stream, error)
+	GetStream(id string) (*models.Stream, error)
+	SaveStream(stream *models.Stream) error
+	DeleteStream(id string) error
 }
 
 type JSONStore struct {
-	filePath string
-	mu       sync.RWMutex
-	sites    map[string]models.Site
+	sitesFilePath   string
+	streamsFilePath string
+	mu              sync.RWMutex
+	sites           map[string]models.Site
+	streams         map[string]models.Stream
 }
 
 func NewJSONStore(dir string) (*JSONStore, error) {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, err
 	}
-	filePath := filepath.Join(dir, "metadata.json")
 	s := &JSONStore{
-		filePath: filePath,
-		sites:    make(map[string]models.Site),
+		sitesFilePath:   filepath.Join(dir, "metadata.json"),
+		streamsFilePath: filepath.Join(dir, "streams.json"),
+		sites:           make(map[string]models.Site),
+		streams:         make(map[string]models.Stream),
 	}
 
 	if err := s.load(); err != nil {
-		// If file doesn't exist, that's fine, start empty
-		if !os.IsNotExist(err) {
-			return nil, err
-		}
+		return nil, err
 	}
 	return s, nil
 }
@@ -46,26 +51,37 @@ func (s *JSONStore) load() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	data, err := os.ReadFile(s.filePath)
-	if err != nil {
-		return err
+	// Load Sites
+	if data, err := os.ReadFile(s.sitesFilePath); err == nil && len(data) > 0 {
+		if err := json.Unmarshal(data, &s.sites); err != nil {
+			return fmt.Errorf("failed to load sites: %w", err)
+		}
 	}
 
-	if len(data) == 0 {
-		return nil
+	// Load Streams
+	if data, err := os.ReadFile(s.streamsFilePath); err == nil && len(data) > 0 {
+		if err := json.Unmarshal(data, &s.streams); err != nil {
+			return fmt.Errorf("failed to load streams: %w", err)
+		}
 	}
 
-	return json.Unmarshal(data, &s.sites)
+	return nil
 }
 
-// save writes to disk. Caller must hold lock.
-func (s *JSONStore) save() error {
+func (s *JSONStore) saveSites() error {
 	data, err := json.MarshalIndent(s.sites, "", "  ")
 	if err != nil {
 		return err
 	}
+	return os.WriteFile(s.sitesFilePath, data, 0644)
+}
 
-	return os.WriteFile(s.filePath, data, 0644)
+func (s *JSONStore) saveStreams() error {
+	data, err := json.MarshalIndent(s.streams, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(s.streamsFilePath, data, 0644)
 }
 
 func (s *JSONStore) ListSites() ([]models.Site, error) {
@@ -93,7 +109,7 @@ func (s *JSONStore) SaveSite(site *models.Site) error {
 	defer s.mu.Unlock()
 
 	s.sites[site.ID] = *site
-	return s.save()
+	return s.saveSites()
 }
 
 func (s *JSONStore) DeleteSite(id string) error {
@@ -101,7 +117,45 @@ func (s *JSONStore) DeleteSite(id string) error {
 	defer s.mu.Unlock()
 
 	delete(s.sites, id)
-	return s.save()
+	return s.saveSites()
+}
+
+// Stream Methods
+
+func (s *JSONStore) ListStreams() ([]models.Stream, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	list := make([]models.Stream, 0, len(s.streams))
+	for _, stream := range s.streams {
+		list = append(list, stream)
+	}
+	return list, nil
+}
+
+func (s *JSONStore) GetStream(id string) (*models.Stream, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	stream, ok := s.streams[id]
+	if !ok {
+		return nil, fmt.Errorf("stream not found: %s", id)
+	}
+	return &stream, nil
+}
+
+func (s *JSONStore) SaveStream(stream *models.Stream) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.streams[stream.ID] = *stream
+	return s.saveStreams()
+}
+
+func (s *JSONStore) DeleteStream(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	delete(s.streams, id)
+	return s.saveStreams()
 }
 
 // saveAtomic is removed as it is no longer needed.

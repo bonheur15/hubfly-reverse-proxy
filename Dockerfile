@@ -23,7 +23,7 @@ COPY start.sh /start.sh
 RUN chmod +x /start.sh
 
 # Create necessary directories
-RUN mkdir -p /etc/hubfly/sites /etc/hubfly/staging /etc/hubfly/templates \
+RUN mkdir -p /etc/hubfly/sites /etc/hubfly/streams /etc/hubfly/staging /etc/hubfly/templates \
     /var/www/hubfly /var/log/hubfly /var/cache/nginx
 
 # Copy templates

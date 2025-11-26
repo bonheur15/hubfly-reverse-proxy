@@ -82,6 +82,34 @@ curl -X DELETE http://localhost:6000/v1/sites/secure-site-1?revoke_cert=true
 # curl -X DELETE "http://localhost:6000/v1/sites/secure-site?revoke_cert=true"
 ```
 
+### 7. TCP/UDP Stream Proxying (Databases, etc.)
+Hubfly can also proxy TCP and UDP traffic (Layer 4). This is useful for exposing databases, game servers, or other non-HTTP services.
+
+**Important:** You must ensure the `listen_port` is exposed in your Docker container (e.g., via `-p` flags in `docker run` or `ports` in `docker-compose.yml`).
+
+#### Create a TCP Stream (e.g., Postgres)
+Forward traffic from port `5432` on the host to a container named `postgres_db` on port `5432`.
+```bash
+curl -X POST http://localhost:6000/v1/streams \
+  -H "Content-Type: application/json" \
+  -d '{
+    "listen_port": 5432,
+    "upstream": "postgres_db:5432",
+    "protocol": "tcp"
+  }'
+```
+
+#### List Streams
+```bash
+curl http://localhost:6000/v1/streams
+```
+
+#### Delete a Stream
+```bash
+# The default ID format is stream-{port} unless manually specified
+curl -X DELETE http://localhost:6000/v1/streams/stream-5432
+```
+
 ---
 
 ## Project Structure
