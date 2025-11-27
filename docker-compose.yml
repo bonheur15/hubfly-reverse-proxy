@@ -9,6 +9,7 @@ services:
       - "80:80"
       - "443:443"
       - "6000:6000" # Management API
+      - "30000-30100:30000-30100"
     volumes:
       - hubfly_data:/etc/hubfly
       - certs:/etc/letsencrypt

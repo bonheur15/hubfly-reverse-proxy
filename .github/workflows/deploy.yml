@@ -57,6 +57,7 @@ jobs:
               -p 80:80 \
               -p 443:443 \
               -p 6000:6000 \
+              -p 30000-30100:30000-30100 \
               -v hubfly_data:/etc/hubfly \
               -v certs:/etc/letsencrypt \
               -v webroot:/var/www/hubfly \

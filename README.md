@@ -58,7 +58,7 @@ curl -X POST http://localhost:6000/v1/sites \
     "upstreams": ["youthful_margulis:80"],
     "ssl": true,
     "force_ssl": true,
-    "templates": ["security-headers"]
+    "templates": ["security-headers","basic-caching"]
   }'
 ```
 
@@ -82,18 +82,18 @@ curl -X DELETE http://localhost:6000/v1/sites/secure-site-1?revoke_cert=true
 # curl -X DELETE "http://localhost:6000/v1/sites/secure-site?revoke_cert=true"
 ```
 
-### 7. TCP/UDP Stream Proxying (Databases, etc.)
+### 7. TCP/UDP Stream Proxying (Databases, SSH, etc.)
 Hubfly can also proxy TCP and UDP traffic (Layer 4). This is useful for exposing databases, game servers, or other non-HTTP services.
 
 **Important:** You must ensure the `listen_port` is exposed in your Docker container (e.g., via `-p` flags in `docker run` or `ports` in `docker-compose.yml`).
 
-#### Create a TCP Stream (e.g., Postgres)
-Forward traffic from port `5432` on the host to a container named `postgres_db` on port `5432`.
+#### Basic TCP Stream (e.g., Postgres)
+Forward traffic from an automatically assigned port (30000-30100) on the host to a container named `postgres_db` on port `5432`. If `listen_port` is omitted, it will be automatically assigned. The assigned port will be returned in the response.
+
 ```bash
 curl -X POST http://localhost:6000/v1/streams \
   -H "Content-Type: application/json" \
   -d '{
-    "listen_port": 5432,
     "upstream": "postgres_db:5432",
     "protocol": "tcp"
   }'
@@ -106,8 +106,11 @@ curl http://localhost:6000/v1/streams
 
 #### Delete a Stream
 ```bash
-# The default ID format is stream-{port} unless manually specified
-curl -X DELETE http://localhost:6000/v1/streams/stream-5432
+# For a basic stream, the ID is typically 'stream-{port}' or manually provided
+curl -X DELETE http://localhost:6000/v1/streams/postgres-stream
+
+# For an SNI stream, use the provided ID
+curl -X DELETE http://localhost:6000/v1/streams/mysql-db1
 ```
 
 ---

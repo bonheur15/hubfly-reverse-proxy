@@ -1,48 +1,147 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hubfly Proxy</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f0f2f5;
-            color: #333;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .container {
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            text-align: center;
-            max-width: 500px;
-        }
-        h1 {
-            color: #2c3e50;
-            margin-bottom: 0.5rem;
-        }
-        p {
-            color: #666;
-            line-height: 1.6;
-        }
-        .logo {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="logo">✈️</div>
-        <h1>Hubfly is Running</h1>
-        <p>The reverse proxy is up and running successfully.</p>
-        <p>If you are seeing this page, it means the domain you accessed is pointing to this server, but no specific site configuration has been matched.</p>
-    </div>
-</body>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Container Running - Hubfly</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+            @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
+            body {
+                font-family: "Inter", sans-serif;
+            }
+            .font-mono {
+                font-family: "JetBrains Mono", monospace;
+            }
+        </style>
+        <script>
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        colors: {
+                            hubfly: {
+                                50: "#fffbeb",
+                                100: "#fef3c7",
+                                400: "#fbbf24",
+                                600: "#d97706",
+                                800: "#92400e",
+                                900: "#78350f" /* Darkish Brown */,
+                                950: "#451a03" /* Very Dark Brown Background */,
+                            },
+                        },
+                    },
+                },
+            };
+        </script>
+    </head>
+    <body
+        class="bg-gray-100 text-slate-800 min-h-screen flex flex-col justify-center items-center p-4"
+    >
+        <main
+            class="w-full max-w-lg bg-white border-t-4 border-hubfly-600 rounded-lg shadow-lg overflow-hidden"
+        >
+            <div
+                class="bg-hubfly-950 px-6 py-5 flex items-center justify-between"
+            >
+                <div class="flex items-center space-x-3">
+                    <div
+                        class="p-1.5 bg-hubfly-900 rounded-md border border-hubfly-800"
+                    >
+                        <svg
+                            class="w-6 h-6 text-hubfly-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                            ></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-white font-bold tracking-wide text-sm">
+                            HUBFLY<span class="text-hubfly-400">.APP</span>
+                        </h3>
+                        <p
+                            class="text-hubfly-100 text-[10px] uppercase tracking-wider opacity-80"
+                        >
+                            Container Engine
+                        </p>
+                    </div>
+                </div>
+                <div class="flex flex-col items-end">
+                    <div class="flex items-center space-x-2">
+                        <span class="relative flex h-2.5 w-2.5">
+                            <span
+                                class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"
+                            ></span>
+                            <span
+                                class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"
+                            ></span>
+                        </span>
+                        <span class="text-xs text-white font-mono font-medium"
+                            >RUNNING</span
+                        >
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-8">
+                <h1 class="text-2xl font-bold text-slate-900 mb-2">
+                    Your Container is Ready
+                </h1>
+
+                <p class="text-slate-600 mb-6 text-sm leading-relaxed">
+                    You have successfully deployed your application on the
+                    <span class="font-semibold text-hubfly-900"
+                        >Hubfly Space</span
+                    >
+                    platform. If you are the owner, upload your code to replace
+                    this default landing page.
+                </p>
+
+                <div
+                    class="bg-slate-900 rounded-md p-4 mb-6 shadow-inner border border-slate-800 relative group"
+                >
+                    <div class="flex space-x-1.5 mb-3 opacity-50">
+                        <div class="w-2.5 h-2.5 rounded-full bg-red-500"></div>
+                        <div
+                            class="w-2.5 h-2.5 rounded-full bg-yellow-500"
+                        ></div>
+                        <div
+                            class="w-2.5 h-2.5 rounded-full bg-green-500"
+                        ></div>
+                    </div>
+
+                    <div class="font-mono text-xs space-y-2">
+                        <div class="flex">
+                            <span class="text-gray-500 w-24">status:</span>
+                            <span class="text-green-400">Up 3 seconds</span>
+                        </div>
+                        <div class="flex border-t border-slate-700 mt-2 pt-2">
+                            <span class="text-gray-400 mr-2">$</span>
+                            <span class="text-gray-300 typing-cursor"
+                                >awaiting application code...</span
+                            >
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div
+                class="bg-gray-50 px-8 py-4 border-t border-gray-100 flex justify-between items-center"
+            >
+                <p
+                    class="text-[10px] text-gray-400 uppercase font-bold tracking-wider"
+                >
+                    Hubfly Proxy Network
+                </p>
+                <p class="text-[10px] text-gray-400">v2.4.0</p>
+            </div>
+        </main>
+    </body>
 </html>

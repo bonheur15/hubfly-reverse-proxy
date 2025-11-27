@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"time"
 
@@ -58,15 +59,33 @@ func (s *Server) handleStreams(w http.ResponseWriter, r *http.Request) {
 			errorResponse(w, 400, "invalid json")
 			return
 		}
-		if stream.ID == "" {
-			// Use listen port as ID if not provided, or unique ID
-			// Simple: "stream-PORT"
-			// But user might provide ID.
-			if stream.ListenPort == 0 {
-				errorResponse(w, 400, "listen_port is required")
+		if stream.ListenPort == 0 {
+			streams, err := s.Store.ListStreams()
+			if err != nil {
+				errorResponse(w, 500, "failed to list streams: "+err.Error())
 				return
 			}
+
+			usedPorts := make(map[int]bool)
+			for _, str := range streams {
+				usedPorts[str.ListenPort] = true
+			}
+
+			var candidates []int
+			for p := 30000; p <= 30100; p++ {
+				if !usedPorts[p] {
+					candidates = append(candidates, p)
+				}
+			}
+
+			if len(candidates) == 0 {
+				errorResponse(w, 500, "no available ports in range 30000-30100")
+				return
+			}
+
+			stream.ListenPort = candidates[rand.Intn(len(candidates))]
 		}
+
 		if stream.ID == "" {
 			// Generate ID
 			stream.ID = fmt.Sprintf("stream-%d", stream.ListenPort)

@@ -183,6 +183,7 @@ func (m *Manager) RebuildStreamConfig(port int, streams []models.Stream) error {
 		tmpl := `
 server {
     listen {{ .ListenPort }}{{ .Proto }};
+    listen [::]:{{ .ListenPort }}{{ .Proto }};
     proxy_pass {{ .Upstream }};
 }
 `
