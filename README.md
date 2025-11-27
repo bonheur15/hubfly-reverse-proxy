@@ -15,7 +15,7 @@ The easiest way to run Hubfly is using Docker Compose. This sets up the API, NGI
 docker-compose up --build
 ```
 
-- **API**: `http://localhost:6000`
+- **API**: `http://localhost:81`
 - **HTTP**: Port `80`
 - **HTTPS**: Port `443`
 
@@ -28,13 +28,13 @@ Here are `curl` commands to interact with the API.
 ### 1. Check Health
 Verify the service is running.
 ```bash
-curl -i http://localhost:6000/v1/health
+curl -i http://localhost:81/v1/health
 ```
 
 ### 2. Create a Simple Site (HTTP)
 Forward traffic from `example.local` to a local upstream (e.g., a container IP or external site).
 ```bash
-curl -X POST http://localhost:6000/v1/sites \
+curl -X POST http://localhost:81/v1/sites \
   -H "Content-Type: application/json" \
   -d '{
     "id": "my-site-4",
@@ -50,7 +50,7 @@ curl -X POST http://localhost:6000/v1/sites \
 ### 3. Create a Site with SSL (Production)
 **Prerequisite:** The domain must point to this server's public IP, and port 80/443 must be open.
 ```bash "basic-caching", 
-curl -X POST http://localhost:6000/v1/sites \
+curl -X POST http://localhost:81/v1/sites \
   -H "Content-Type: application/json" \
   -d '{
     "id": "secure-site-1",
@@ -65,21 +65,21 @@ curl -X POST http://localhost:6000/v1/sites \
 ### 4. List All Sites
 See all configured sites and their status.
 ```bash
-curl http://localhost:6000/v1/sites
+curl http://localhost:81/v1/sites
 ```
 
 ### 5. Get Site Details
 View configuration for a specific site.
 ```bash
-curl http://localhost:6000/v1/sites/my-site
+curl http://localhost:81/v1/sites/my-site
 ```
 
 ### 6. Delete a Site
 Remove the NGINX config. Add `?revoke_cert=true` to also revoke the SSL certificate.
 ```bash
-curl -X DELETE http://localhost:6000/v1/sites/secure-site-1?revoke_cert=true
+curl -X DELETE http://localhost:81/v1/sites/secure-site-1?revoke_cert=true
 # OR with revocation
-# curl -X DELETE "http://localhost:6000/v1/sites/secure-site?revoke_cert=true"
+# curl -X DELETE "http://localhost:81/v1/sites/secure-site?revoke_cert=true"
 ```
 
 ### 7. TCP/UDP Stream Proxying (Databases, SSH, etc.)
@@ -91,26 +91,31 @@ Hubfly can also proxy TCP and UDP traffic (Layer 4). This is useful for exposing
 Forward traffic from an automatically assigned port (30000-30100) on the host to a container named `postgres_db` on port `5432`. If `listen_port` is omitted, it will be automatically assigned. The assigned port will be returned in the response.
 
 ```bash
-curl -X POST http://localhost:6000/v1/streams \
+curl -X POST http://localhost:81/v1/streams \
   -H "Content-Type: application/json" \
   -d '{
-    "upstream": "postgres_db:5432",
-    "protocol": "tcp"
+    "upstream": "jolly_kare:5432",
+    "protocol": "tcp",
+    "id":"jolly_kare:5432"
   }'
 ```
 
+response:
+{"id":"db-1:3306","listen_port":30073,"upstream":"db-1:3306","protocol":"tcp","status":"provisioning","created_at":"2025-11-27T12:40:20.176747778Z","updated_at":"2025-11-27T12:40:20.176747878Z"}
+
+
 #### List Streams
 ```bash
-curl http://localhost:6000/v1/streams
+curl http://localhost:81/v1/streams
 ```
 
 #### Delete a Stream
 ```bash
 # For a basic stream, the ID is typically 'stream-{port}' or manually provided
-curl -X DELETE http://localhost:6000/v1/streams/postgres-stream
+curl -X DELETE http://localhost:81/v1/streams/db-1:3306
 
 # For an SNI stream, use the provided ID
-curl -X DELETE http://localhost:6000/v1/streams/mysql-db1
+curl -X DELETE http://localhost:81/v1/streams/mysql-db1
 ```
 
 ---

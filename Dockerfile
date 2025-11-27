@@ -31,7 +31,7 @@ COPY ./templates /etc/hubfly/templates
 COPY ./static /var/www/hubfly/static
 
 # Expose ports
-EXPOSE 80 443 6000 30000-30100
+EXPOSE 80 443 81 30000-30100
 
 # Volume for persistence
 VOLUME ["/etc/letsencrypt", "/etc/hubfly", "/var/www/hubfly"]
