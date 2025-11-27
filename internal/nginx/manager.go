@@ -80,6 +80,12 @@ server {
     location / {
         set $upstream_endpoint "http://{{ index .Upstreams 0 }}";
         proxy_pass $upstream_endpoint;
+
+        # WebSocket Support
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+
         {{ range $k, $v := .ProxySetHeaders }}
         proxy_set_header {{ $k }} {{ $v }};
         {{ end }}
@@ -114,6 +120,12 @@ server {
     location / {
         set $upstream_endpoint "http://{{ index .Upstreams 0 }}";
         proxy_pass $upstream_endpoint;
+
+        # WebSocket Support
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+
         {{ range $k, $v := .ProxySetHeaders }}
         proxy_set_header {{ $k }} {{ $v }};
         {{ end }}
