@@ -106,7 +106,7 @@ response:
 
 #### List Streams
 ```bash
-curl http://localhost:81/v1/streams
+curl http://100.106.206.92:81/v1/streams
 ```
 
 #### Delete a Stream

@@ -11,18 +11,18 @@ services:
       - "81:81" # Management API
       - "30000-30100:30000-30100"
     volumes:
-      - hubfly_data:/etc/hubfly
-      - certs:/etc/letsencrypt
-      - webroot:/var/www/hubfly
+      - hubfly_proxy_data:/etc/hubfly
+      - hubfly_proxy_certs:/etc/letsencrypt
+      - hubfly_proxy_webroot:/var/www/hubfly
     environment:
       - TZ=UTC
     networks:
       - hubfly-proxy-network
 
 volumes:
-  hubfly_data:
-  certs:
-  webroot:
+  hubfly_proxy_data:
+  hubfly_proxy_certs:
+  hubfly_proxy_webroot:
 
 networks:
   hubfly-proxy-network:
