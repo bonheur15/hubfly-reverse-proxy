@@ -21,9 +21,13 @@ services:
 
 volumes:
   hubfly_proxy_data:
+    name: hubfly_proxy_data
   hubfly_proxy_certs:
+    name: hubfly_proxy_certs
   hubfly_proxy_webroot:
+    name: hubfly_proxy_webroot
 
 networks:
   hubfly-proxy-network:
+    name: hubfly-proxy-network
     driver: bridge

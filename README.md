@@ -19,6 +19,25 @@ docker-compose up --build
 - **HTTP**: Port `80`
 - **HTTPS**: Port `443`
 
+## Deployment
+
+A helper script `deploy.sh` is provided to simplify deploying to a remote server via SSH. It handles building the image locally, compressing it, transferring it to the remote server, and starting it with a production-optimized configuration.
+
+### Usage
+
+```bash
+./deploy.sh ubuntu@hub-1
+```
+
+This script performs the following steps:
+1.  **Build**: Builds the Docker image locally.
+2.  **Transfer**: Saves and compresses the image, then transfers it via `scp` (showing a progress bar).
+3.  **Configure**: Generates a production `docker-compose.yml` on the remote server.
+4.  **Run**: Loads the image and starts the service remotely.
+
+**Note on Resource Naming:**
+The project uses explicit naming for Docker volumes and networks (e.g., `name: hubfly_proxy_data`). This prevents Docker Compose from prepending the directory name (avoiding names like `hubfly-reverse-proxy_hubfly_proxy_data`) and ensures resources are named consistently across different environments (`hubfly_proxy_data`, `hubfly_proxy_certs`, `hubfly_proxy_webroot`).
+
 ---
 
 ## API Usage & Testing
