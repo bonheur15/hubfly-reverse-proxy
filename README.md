@@ -16,6 +16,7 @@ docker-compose up --build
 ```
 
 - **API**: `http://localhost:81`
+- **Management UI**: `http://localhost:82`
 - **HTTP**: Port `80`
 - **HTTPS**: Port `443`
 
@@ -37,6 +38,31 @@ This script performs the following steps:
 
 **Note on Resource Naming:**
 The project uses explicit naming for Docker volumes and networks (e.g., `name: hubfly_proxy_data`). This prevents Docker Compose from prepending the directory name (avoiding names like `hubfly-reverse-proxy_hubfly_proxy_data`) and ensures resources are named consistently across different environments (`hubfly_proxy_data`, `hubfly_proxy_certs`, `hubfly_proxy_webroot`).
+
+---
+
+## Analytics & Monitoring
+
+Hubfly includes a built-in Traffic Analytics Dashboard to visualize NGINX access logs in real-time.
+
+- **Dashboard URL**: `http://localhost:82/logs.html`
+- **Management Interface**: Port `82` (Serves both the UI and proxies API requests to avoid CORS).
+
+### Features
+- **Real-time Stats**: Total requests, unique IPs, error rates, and data transfer.
+- **Visualizations**: Interactive charts for traffic over time and status code distribution.
+- **Detailed Inspection**: Searchable log table, top requested paths, and top client IPs.
+- **Auto-Refresh**: Toggleable live updates (every 5 seconds).
+- **JSON Logging**: NGINX is configured to output structured JSON logs for reliable parsing.
+
+### Logs API
+You can programmatically access the parsed logs via the API.
+
+#### Get Logs
+Fetch the last N lines of the access log (default: 2000).
+```bash
+curl "http://localhost:82/v1/logs?limit=5000"
+```
 
 ---
 
@@ -146,4 +172,5 @@ curl -X DELETE http://localhost:81/v1/streams/mysql-db1
 - **/internal/nginx**: NGINX configuration generation, validation, and reloading.
 - **/internal/certbot**: Wrapper for Certbot (SSL issuance/revocation).
 - **/internal/store**: JSON-based persistence for site metadata.
+- **/static**: Web frontend assets (Dashboard, Analytics UI).
 - **/templates**: NGINX configuration snippets (e.g., caching, security).
