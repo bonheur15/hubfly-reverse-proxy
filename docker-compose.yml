@@ -9,6 +9,7 @@ services:
       - "80:80"
       - "443:443"
       - "81:81" # Management API
+      - "82:82" # Management UI & Proxy
       - "30000-30100:30000-30100"
     volumes:
       - hubfly_proxy_data:/etc/hubfly

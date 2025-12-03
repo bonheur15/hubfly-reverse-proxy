@@ -1,123 +1,286 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hubfly - Analytics</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body class="bg-gray-900 text-gray-100 min-h-screen">
-    <div id="app" class="container mx-auto px-4 py-8">
-        <!-- Header -->
-        <div class="flex justify-between items-center mb-8">
-            <div>
-                <h1 class="text-3xl font-bold text-blue-400">Traffic Analytics</h1>
-                <p class="text-gray-400 text-sm">Real-time Nginx Log Analysis</p>
-            </div>
-            <div class="flex gap-4">
-                <a href="/" class="bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded text-sm transition">
-                    <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
-                </a>
-                <button @click="fetchLogs" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm transition">
-                    <i class="fas fa-sync-alt mr-2" :class="{'fa-spin': loading}"></i>Refresh
-                </button>
-            </div>
-        </div>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Hubfly - Analytics</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <!-- Icons -->
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+        />
+    </head>
+    <body class="bg-gray-900 text-gray-100 min-h-screen">
+        <div id="app" class="container mx-auto px-4 py-8">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h1 class="text-3xl font-bold text-blue-40099">
+                        Traffic Analytics.
+                    </h1>
+                    <p class="text-gray-400 text-sm">
+                        Real-time Nginx Log Analysis
+                    </p>
+                </div>
+                            <div class="flex gap-4 items-center">
+                                <div class="flex items-center gap-2 mr-2">
+                                    <input type="checkbox" id="autoRefresh" v-model="autoRefresh" class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2">
+                                    <label for="autoRefresh" class="text-sm text-gray-300 select-none cursor-pointer">Auto Refresh (5s)</label>
+                                </div>
+                                <a href="/" class="bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded text-sm transition">
+                                    <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+                                </a>
+                                <button @click="fetchLogs" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm transition">
+                                    <i class="fas fa-sync-alt mr-2" :class="{'fa-spin': loading}"></i>Refresh
+                                </button>
+                            </div>            </div>
 
-        <!-- Stats Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div class="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
-                <div class="text-gray-400 text-xs uppercase font-semibold tracking-wider">Total Requests</div>
-                <div class="text-3xl font-bold mt-2">{{ totalRequests }}</div>
-            </div>
-            <div class="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
-                <div class="text-gray-400 text-xs uppercase font-semibold tracking-wider">Unique IPs</div>
-                <div class="text-3xl font-bold mt-2 text-green-400">{{ uniqueIPs }}</div>
-            </div>
-            <div class="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
-                <div class="text-gray-400 text-xs uppercase font-semibold tracking-wider">Error Rate (4xx/5xx)</div>
-                <div class="text-3xl font-bold mt-2" :class="errorRate > 5 ? 'text-red-500' : 'text-yellow-400'">{{ errorRate }}%</div>
-            </div>
-            <div class="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
-                <div class="text-gray-400 text-xs uppercase font-semibold tracking-wider">Data Transferred</div>
-                <div class="text-3xl font-bold mt-2 text-purple-400">{{ totalDataTransferred }}</div>
-            </div>
-        </div>
-
-        <!-- Charts Row -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            <!-- Main Traffic Chart -->
-            <div class="lg:col-span-2 bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
-                <h3 class="text-lg font-semibold mb-4 text-gray-300">Requests Over Time</h3>
-                <div class="relative h-64">
-                    <canvas id="trafficChart"></canvas>
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div
+                    class="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700"
+                >
+                    <div
+                        class="text-gray-400 text-xs uppercase font-semibold tracking-wider"
+                    >
+                        Total Requests
+                    </div>
+                    <div class="text-3xl font-bold mt-2">
+                        {{ totalRequests }}
+                    </div>
+                </div>
+                <div
+                    class="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700"
+                >
+                    <div
+                        class="text-gray-400 text-xs uppercase font-semibold tracking-wider"
+                    >
+                        Unique IPs
+                    </div>
+                    <div class="text-3xl font-bold mt-2 text-green-400">
+                        {{ uniqueIPs }}
+                    </div>
+                </div>
+                <div
+                    class="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700"
+                >
+                    <div
+                        class="text-gray-400 text-xs uppercase font-semibold tracking-wider"
+                    >
+                        Error Rate (4xx/5xx)
+                    </div>
+                    <div
+                        class="text-3xl font-bold mt-2"
+                        :class="errorRate > 5 ? 'text-red-500' : 'text-yellow-400'"
+                    >
+                        {{ errorRate }}%
+                    </div>
+                </div>
+                <div
+                    class="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700"
+                >
+                    <div
+                        class="text-gray-400 text-xs uppercase font-semibold tracking-wider"
+                    >
+                        Data Transferred
+                    </div>
+                    <div class="text-3xl font-bold mt-2 text-purple-400">
+                        {{ totalDataTransferred }}
+                    </div>
                 </div>
             </div>
-            <!-- Status Codes -->
-            <div class="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
-                <h3 class="text-lg font-semibold mb-4 text-gray-300">Status Codes</h3>
-                <div class="relative h-64 flex justify-center">
-                    <canvas id="statusChart"></canvas>
+
+            <!-- Charts Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <!-- Main Traffic Chart -->
+                <div
+                    class="lg:col-span-2 bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700"
+                >
+                    <h3 class="text-lg font-semibold mb-4 text-gray-300">
+                        Requests Over Time
+                    </h3>
+                    <div class="relative h-64">
+                        <canvas id="trafficChart"></canvas>
+                    </div>
+                </div>
+                <!-- Status Codes -->
+                <div
+                    class="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700"
+                >
+                    <h3 class="text-lg font-semibold mb-4 text-gray-300">
+                        Status Codes
+                    </h3>
+                    <div class="relative h-64 flex justify-center">
+                        <canvas id="statusChart"></canvas>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Filters -->
-        <div class="bg-gray-800 p-4 rounded-lg shadow mb-6 border border-gray-700">
-            <div class="flex flex-wrap gap-4">
-                <input v-model="searchQuery" type="text" placeholder="Search (IP, Path, User Agent)..." 
-                       class="bg-gray-700 text-white px-4 py-2 rounded border border-gray-600 focus:border-blue-500 focus:outline-none flex-grow">
-                <select v-model="timeRange" class="bg-gray-700 text-white px-4 py-2 rounded border border-gray-600 focus:border-blue-500 focus:outline-none">
-                    <option value="all">All Time</option>
-                    <option value="1h">Last 1 Hour</option>
-                    <option value="24h">Last 24 Hours</option>
-                    <option value="7d">Last 7 Days</option>
-                </select>
+            <!-- Filters -->
+            <div
+                class="bg-gray-800 p-4 rounded-lg shadow mb-6 border border-gray-700"
+            >
+                <div class="flex flex-wrap gap-4">
+                    <input
+                        v-model="searchQuery"
+                        type="text"
+                        placeholder="Search (IP, Path, User Agent)..."
+                        class="bg-gray-700 text-white px-4 py-2 rounded border border-gray-600 focus:border-blue-500 focus:outline-none flex-grow"
+                    />
+                    <select
+                        v-model="timeRange"
+                        class="bg-gray-700 text-white px-4 py-2 rounded border border-gray-600 focus:border-blue-500 focus:outline-none"
+                    >
+                        <option value="all">All Time</option>
+                        <option value="1h">Last 1 Hour</option>
+                        <option value="24h">Last 24 Hours</option>
+                        <option value="7d">Last 7 Days</option>
+                    </select>
+                </div>
             </div>
-        </div>
 
-        <!-- Detailed Lists -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <!-- Top Endpoints -->
-            <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden">
-                <div class="p-4 bg-gray-750 border-b border-gray-700 font-semibold">Top Requested Paths</div>
-                <div class="max-h-64 overflow-y-auto">
+            <!-- Detailed Lists -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <!-- Top Endpoints -->
+                <div
+                    class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden"
+                >
+                    <div
+                        class="p-4 bg-gray-750 border-b border-gray-700 font-semibold"
+                    >
+                        Top Requested Paths
+                    </div>
+                    <div class="max-h-64 overflow-y-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-gray-700 text-gray-300">
+                                <tr>
+                                    <th class="p-3">Path</th>
+                                    <th class="p-3 text-right">Hits</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-700">
+                                <tr
+                                    v-for="(count, path) in topPaths"
+                                    :key="path"
+                                    class="hover:bg-gray-700 transition"
+                                >
+                                    <td
+                                        class="p-3 truncate max-w-xs"
+                                        :title="path"
+                                    >
+                                        {{ path }}
+                                    </td>
+                                    <td
+                                        class="p-3 text-right font-mono text-blue-300"
+                                    >
+                                        {{ count }}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Top IPs -->
+                <div
+                    class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden"
+                >
+                    <div
+                        class="p-4 bg-gray-750 border-b border-gray-700 font-semibold"
+                    >
+                        Top Client IPs
+                    </div>
+                    <div class="max-h-64 overflow-y-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-gray-700 text-gray-300">
+                                <tr>
+                                    <th class="p-3">IP Address</th>
+                                    <th class="p-3 text-right">Hits</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-700">
+                                <tr
+                                    v-for="(count, ip) in topIPs"
+                                    :key="ip"
+                                    class="hover:bg-gray-700 transition"
+                                >
+                                    <td class="p-3 font-mono text-green-300">
+                                        {{ ip }}
+                                    </td>
+                                    <td
+                                        class="p-3 text-right font-mono text-blue-300"
+                                    >
+                                        {{ count }}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Logs Table -->
+            <div
+                class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden"
+            >
+                <div
+                    class="p-4 bg-gray-750 border-b border-gray-700 font-semibold flex justify-between items-center"
+                >
+                    <span>Recent Logs</span>
+                    <span class="text-xs text-gray-400"
+                        >Showing last 100 matches</span
+                    >
+                </div>
+                <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm">
                         <thead class="bg-gray-700 text-gray-300">
                             <tr>
+                                <th class="p-3 w-24">Time</th>
+                                <th class="p-3 w-20">Status</th>
+                                <th class="p-3 w-24">Method</th>
                                 <th class="p-3">Path</th>
-                                <th class="p-3 text-right">Hits</th>
+                                <th class="p-3 w-32">IP</th>
+                                <th class="p-3 w-48">User Agent</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-700">
-                            <tr v-for="(count, path) in topPaths" :key="path" class="hover:bg-gray-700 transition">
-                                <td class="p-3 truncate max-w-xs" :title="path">{{ path }}</td>
-                                <td class="p-3 text-right font-mono text-blue-300">{{ count }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Top IPs -->
-            <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden">
-                <div class="p-4 bg-gray-750 border-b border-gray-700 font-semibold">Top Client IPs</div>
-                <div class="max-h-64 overflow-y-auto">
-                    <table class="w-full text-left text-sm">
-                        <thead class="bg-gray-700 text-gray-300">
-                            <tr>
-                                <th class="p-3">IP Address</th>
-                                <th class="p-3 text-right">Hits</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-700">
-                            <tr v-for="(count, ip) in topIPs" :key="ip" class="hover:bg-gray-700 transition">
-                                <td class="p-3 font-mono text-green-300">{{ ip }}</td>
-                                <td class="p-3 text-right font-mono text-blue-300">{{ count }}</td>
+                            <tr
+                                v-for="log in filteredLogs.slice(0, 100)"
+                                :key="log.time_local + log.request"
+                                class="hover:bg-gray-700 transition font-mono text-xs"
+                            >
+                                <td class="p-3 whitespace-nowrap">
+                                    {{ formatTime(log.time_local) }}
+                                </td>
+                                <td class="p-3">
+                                    <span
+                                        class="px-2 py-1 rounded text-xs font-bold"
+                                        :class="getStatusColor(log.status)"
+                                    >
+                                        {{ log.status }}
+                                    </span>
+                                </td>
+                                <td class="p-3 text-blue-300">
+                                    {{ log.request_method }}
+                                </td>
+                                <td
+                                    class="p-3 text-gray-300 truncate max-w-md"
+                                    :title="log.request_uri"
+                                >
+                                    {{ log.request_uri }}
+                                </td>
+                                <td class="p-3 text-gray-400">
+                                    {{ log.remote_addr }}
+                                </td>
+                                <td
+                                    class="p-3 text-gray-500 truncate max-w-xs"
+                                    :title="log.http_user_agent"
+                                >
+                                    {{ parseUA(log.http_user_agent) }}
+                                </td>
                             </tr>
                         </tbody>
                     </table>
@@ -125,276 +288,342 @@
             </div>
         </div>
 
-        <!-- Recent Logs Table -->
-        <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden">
-            <div class="p-4 bg-gray-750 border-b border-gray-700 font-semibold flex justify-between items-center">
-                <span>Recent Logs</span>
-                <span class="text-xs text-gray-400">Showing last 100 matches</span>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead class="bg-gray-700 text-gray-300">
-                        <tr>
-                            <th class="p-3 w-24">Time</th>
-                            <th class="p-3 w-20">Status</th>
-                            <th class="p-3 w-24">Method</th>
-                            <th class="p-3">Path</th>
-                            <th class="p-3 w-32">IP</th>
-                            <th class="p-3 w-48">User Agent</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-700">
-                        <tr v-for="log in filteredLogs.slice(0, 100)" :key="log.time_local + log.request" class="hover:bg-gray-700 transition font-mono text-xs">
-                            <td class="p-3 whitespace-nowrap">{{ formatTime(log.time_local) }}</td>
-                            <td class="p-3">
-                                <span class="px-2 py-1 rounded text-xs font-bold" 
-                                      :class="getStatusColor(log.status)">
-                                    {{ log.status }}
-                                </span>
-                            </td>
-                            <td class="p-3 text-blue-300">{{ log.request_method }}</td>
-                            <td class="p-3 text-gray-300 truncate max-w-md" :title="log.request_uri">{{ log.request_uri }}</td>
-                            <td class="p-3 text-gray-400">{{ log.remote_addr }}</td>
-                            <td class="p-3 text-gray-500 truncate max-w-xs" :title="log.http_user_agent">{{ parseUA(log.http_user_agent) }}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+        <script>
+            const { createApp, ref, computed, onMounted, watch, onUnmounted } = Vue;
 
-    <script>
-        const { createApp, ref, computed, onMounted, watch } = Vue;
+            createApp({
+                setup() {
+                    const logs = ref([]);
+                    const loading = ref(false);
+                    const searchQuery = ref("");
+                    const timeRange = ref("all");
+                    const autoRefresh = ref(false);
+                    let refreshInterval = null;
+                    let trafficChartInstance = null;
+                    let statusChartInstance = null;
 
-        createApp({
-            setup() {
-                const logs = ref([]);
-                const loading = ref(false);
-                const searchQuery = ref('');
-                const timeRange = ref('all');
-                let trafficChartInstance = null;
-                let statusChartInstance = null;
-
-                // Fetch Logs
-                const fetchLogs = async () => {
-                    loading.value = true;
-                    try {
-                        const res = await fetch('/v1/logs');
-                        const data = await res.json();
-                        // Filter out logs without timestamps
-                        logs.value = (data || []).filter(l => l.time_local).reverse();
-                    } catch (e) {
-                        console.error(e);
-                        alert("Failed to fetch logs");
-                    } finally {
-                        loading.value = false;
-                    }
-                };
-
-                // Computed Filtered Logs
-                const filteredLogs = computed(() => {
-                    let res = logs.value;
-
-                    // Search Filter
-                    if (searchQuery.value) {
-                        const q = searchQuery.value.toLowerCase();
-                        res = res.filter(l => 
-                            l.request_uri.toLowerCase().includes(q) || 
-                            l.remote_addr.includes(q) ||
-                            l.http_user_agent.toLowerCase().includes(q)
-                        );
-                    }
-
-                    // Time Range Filter
-                    if (timeRange.value !== 'all') {
-                        const now = new Date();
-                        let cutoff = new Date();
-                        if (timeRange.value === '1h') cutoff.setHours(now.getHours() - 1);
-                        if (timeRange.value === '24h') cutoff.setHours(now.getHours() - 24);
-                        if (timeRange.value === '7d') cutoff.setDate(now.getDate() - 7);
+                    // Fetch Logs
+                    const fetchLogs = async () => {
+                        if (loading.value && autoRefresh.value) return; // Skip if already loading and in auto mode
                         
-                        res = res.filter(l => {
-                            // time_local format: "03/Dec/2025:12:00:00 +0000"
-                            // Nginx time format is tricky for JS Date.parse.
-                            // We need to convert "03/Dec/2025:..." to "03 Dec 2025 ..."
-                            const raw = l.time_local.replace(':', ' '); // First colon only
-                            const d = new Date(raw);
-                            return d >= cutoff;
+                        loading.value = true;
+                        try {
+                            const res = await fetch("/v1/logs");
+                            const data = await res.json();
+                            // Filter out logs without timestamps
+                            logs.value = (data || [])
+                                .filter((l) => l.time_local)
+                                .reverse();
+                        } catch (e) {
+                            console.error(e);
+                            // Don't alert in auto-refresh mode to avoid spam
+                            if (!autoRefresh.value) alert("Failed to fetch logs");
+                        } finally {
+                            loading.value = false;
+                        }
+                    };
+
+                    // Auto Refresh Logic
+                    watch(autoRefresh, (newValue) => {
+                        if (newValue) {
+                            fetchLogs(); // Fetch immediately
+                            refreshInterval = setInterval(fetchLogs, 5000);
+                        } else {
+                            if (refreshInterval) {
+                                clearInterval(refreshInterval);
+                                refreshInterval = null;
+                            }
+                        }
+                    });
+
+                    onUnmounted(() => {
+                        if (refreshInterval) clearInterval(refreshInterval);
+                    });
+
+                    // Computed Filtered Logs
+                    const filteredLogs = computed(() => {
+                        let res = logs.value;
+
+                        // Search Filter
+                        if (searchQuery.value) {
+                            const q = searchQuery.value.toLowerCase();
+                            res = res.filter(
+                                (l) =>
+                                    l.request_uri.toLowerCase().includes(q) ||
+                                    l.remote_addr.includes(q) ||
+                                    l.http_user_agent.toLowerCase().includes(q),
+                            );
+                        }
+
+                        // Time Range Filter
+                        if (timeRange.value !== "all") {
+                            const now = new Date();
+                            let cutoff = new Date();
+                            if (timeRange.value === "1h")
+                                cutoff.setHours(now.getHours() - 1);
+                            if (timeRange.value === "24h")
+                                cutoff.setHours(now.getHours() - 24);
+                            if (timeRange.value === "7d")
+                                cutoff.setDate(now.getDate() - 7);
+
+                            res = res.filter((l) => {
+                                // time_local format: "03/Dec/2025:12:00:00 +0000"
+                                // Nginx time format is tricky for JS Date.parse.
+                                // We need to convert "03/Dec/2025:..." to "03 Dec 2025 ..."
+                                const raw = l.time_local.replace(":", " "); // First colon only
+                                const d = new Date(raw);
+                                return d >= cutoff;
+                            });
+                        }
+
+                        return res;
+                    });
+
+                    // Stats
+                    const totalRequests = computed(
+                        () => filteredLogs.value.length,
+                    );
+
+                    const uniqueIPs = computed(() => {
+                        return new Set(
+                            filteredLogs.value.map((l) => l.remote_addr),
+                        ).size;
+                    });
+
+                    const errorRate = computed(() => {
+                        if (filteredLogs.value.length === 0) return 0;
+                        const errors = filteredLogs.value.filter(
+                            (l) =>
+                                l.status.startsWith("4") ||
+                                l.status.startsWith("5"),
+                        ).length;
+                        return (
+                            (errors / filteredLogs.value.length) *
+                            100
+                        ).toFixed(1);
+                    });
+
+                    const totalDataTransferred = computed(() => {
+                        let bytes = 0;
+                        filteredLogs.value.forEach(
+                            (l) => (bytes += parseInt(l.body_bytes_sent) || 0),
+                        );
+                        if (bytes < 1024) return bytes + " B";
+                        if (bytes < 1024 * 1024)
+                            return (bytes / 1024).toFixed(1) + " KB";
+                        if (bytes < 1024 * 1024 * 1024)
+                            return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+                        return (
+                            (bytes / (1024 * 1024 * 1024)).toFixed(1) + " GB"
+                        );
+                    });
+
+                    const topPaths = computed(() => {
+                        const counts = {};
+                        filteredLogs.value.forEach((l) => {
+                            const p = l.request_uri.split("?")[0];
+                            counts[p] = (counts[p] || 0) + 1;
                         });
-                    }
-
-                    return res;
-                });
-
-                // Stats
-                const totalRequests = computed(() => filteredLogs.value.length);
-                
-                const uniqueIPs = computed(() => {
-                    return new Set(filteredLogs.value.map(l => l.remote_addr)).size;
-                });
-
-                const errorRate = computed(() => {
-                    if (filteredLogs.value.length === 0) return 0;
-                    const errors = filteredLogs.value.filter(l => l.status.startsWith('4') || l.status.startsWith('5')).length;
-                    return ((errors / filteredLogs.value.length) * 100).toFixed(1);
-                });
-
-                const totalDataTransferred = computed(() => {
-                    let bytes = 0;
-                    filteredLogs.value.forEach(l => bytes += parseInt(l.body_bytes_sent) || 0);
-                    if (bytes < 1024) return bytes + ' B';
-                    if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
-                    if (bytes < 1024*1024*1024) return (bytes/(1024*1024)).toFixed(1) + ' MB';
-                    return (bytes/(1024*1024*1024)).toFixed(1) + ' GB';
-                });
-
-                const topPaths = computed(() => {
-                    const counts = {};
-                    filteredLogs.value.forEach(l => {
-                        const p = l.request_uri.split('?')[0];
-                        counts[p] = (counts[p] || 0) + 1;
-                    });
-                    return Object.entries(counts)
-                        .sort((a, b) => b[1] - a[1])
-                        .slice(0, 10)
-                        .reduce((obj, [k, v]) => ({ ...obj, [k]: v }), {});
-                });
-
-                const topIPs = computed(() => {
-                    const counts = {};
-                    filteredLogs.value.forEach(l => {
-                        counts[l.remote_addr] = (counts[l.remote_addr] || 0) + 1;
-                    });
-                    return Object.entries(counts)
-                        .sort((a, b) => b[1] - a[1])
-                        .slice(0, 10)
-                        .reduce((obj, [k, v]) => ({ ...obj, [k]: v }), {});
-                });
-
-                // Helpers
-                const formatTime = (str) => {
-                    if (!str) return '';
-                    return str.split(' ')[0].replace(':', ' ');
-                };
-
-                const getStatusColor = (status) => {
-                    if (status.startsWith('2')) return 'bg-green-900 text-green-300';
-                    if (status.startsWith('3')) return 'bg-blue-900 text-blue-300';
-                    if (status.startsWith('4')) return 'bg-yellow-900 text-yellow-300';
-                    if (status.startsWith('5')) return 'bg-red-900 text-red-300';
-                    return 'bg-gray-700';
-                };
-
-                const parseUA = (ua) => {
-                    if (ua.length > 30) return ua.substring(0, 30) + '...';
-                    return ua;
-                };
-
-                // Charts
-                const updateCharts = () => {
-                    const data = filteredLogs.value;
-                    
-                    // Traffic Data (Group by Hour or Minute depending on range)
-                    // Simplification: Group by Hour always for now
-                    const timeMap = {};
-                    data.forEach(l => {
-                        // Key: "Dec 03 12:00"
-                        const t = l.time_local.split(':')[0] + ':' + l.time_local.split(':')[1];
-                        timeMap[t] = (timeMap[t] || 0) + 1;
-                    });
-                    // Sort keys
-                    const labels = Object.keys(timeMap).reverse(); // logs are reversed, so un-reverse for chart? No, logs are Newest First. We want Oldest First for chart.
-                    // Actually, my filteredLogs is Newest First.
-                    // So Object.keys will might be random order? No, keys are strings.
-                    // Let's sort chronologically.
-                    const sortedLabels = labels.sort((a, b) => {
-                        // simple string sort for "03/Dec/2025:12" works if format is consistent
-                        // But format is "03/Dec/2025:12". Day comes first. 
-                        // Need date parse.
-                        const dateA = new Date(a.replace(':', ' '));
-                        const dateB = new Date(b.replace(':', ' '));
-                        return dateA - dateB;
-                    });
-                    
-                    const trafficData = sortedLabels.map(k => timeMap[k]);
-
-                    // Status Data
-                    const statusCounts = { '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0 };
-                    data.forEach(l => {
-                        const s = l.status.charAt(0);
-                        if (s === '2') statusCounts['2xx']++;
-                        else if (s === '3') statusCounts['3xx']++;
-                        else if (s === '4') statusCounts['4xx']++;
-                        else if (s === '5') statusCounts['5xx']++;
+                        return Object.entries(counts)
+                            .sort((a, b) => b[1] - a[1])
+                            .slice(0, 10)
+                            .reduce((obj, [k, v]) => ({ ...obj, [k]: v }), {});
                     });
 
-                    // Render Traffic Chart
-                    const trafficCtx = document.getElementById('trafficChart').getContext('2d');
-                    if (trafficChartInstance) trafficChartInstance.destroy();
-                    trafficChartInstance = new Chart(trafficCtx, {
-                        type: 'line',
-                        data: {
-                            labels: sortedLabels,
-                            datasets: [{
-                                label: 'Requests',
-                                data: trafficData,
-                                borderColor: '#60A5FA',
-                                backgroundColor: 'rgba(96, 165, 250, 0.1)',
-                                tension: 0.4,
-                                fill: true
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: { legend: { display: false } },
-                            scales: {
-                                y: { grid: { color: '#374151' }, ticks: { color: '#9CA3AF' } },
-                                x: { grid: { display: false }, ticks: { display: false } } // Hide x labels for cleanliness
-                            }
-                        }
+                    const topIPs = computed(() => {
+                        const counts = {};
+                        filteredLogs.value.forEach((l) => {
+                            counts[l.remote_addr] =
+                                (counts[l.remote_addr] || 0) + 1;
+                        });
+                        return Object.entries(counts)
+                            .sort((a, b) => b[1] - a[1])
+                            .slice(0, 10)
+                            .reduce((obj, [k, v]) => ({ ...obj, [k]: v }), {});
                     });
 
-                    // Render Status Chart
-                    const statusCtx = document.getElementById('statusChart').getContext('2d');
-                    if (statusChartInstance) statusChartInstance.destroy();
-                    statusChartInstance = new Chart(statusCtx, {
-                        type: 'doughnut',
-                        data: {
-                            labels: ['2xx Success', '3xx Redirect', '4xx Client Err', '5xx Server Err'],
-                            datasets: [{
-                                data: [statusCounts['2xx'], statusCounts['3xx'], statusCounts['4xx'], statusCounts['5xx']],
-                                backgroundColor: ['#10B981', '#3B82F6', '#F59E0B', '#EF4444'],
-                                borderWidth: 0
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: { 
-                                legend: { position: 'right', labels: { color: '#9CA3AF' } } 
-                            }
-                        }
+                    // Helpers
+                    const formatTime = (str) => {
+                        if (!str) return "";
+                        return str.split(" ")[0].replace(":", " ");
+                    };
+
+                    const getStatusColor = (status) => {
+                        if (status.startsWith("2"))
+                            return "bg-green-900 text-green-300";
+                        if (status.startsWith("3"))
+                            return "bg-blue-900 text-blue-300";
+                        if (status.startsWith("4"))
+                            return "bg-yellow-900 text-yellow-300";
+                        if (status.startsWith("5"))
+                            return "bg-red-900 text-red-300";
+                        return "bg-gray-700";
+                    };
+
+                    const parseUA = (ua) => {
+                        if (ua.length > 30) return ua.substring(0, 30) + "...";
+                        return ua;
+                    };
+
+                    // Charts
+                    const updateCharts = () => {
+                        const data = filteredLogs.value;
+
+                        // Traffic Data (Group by Hour or Minute depending on range)
+                        // Simplification: Group by Hour always for now
+                        const timeMap = {};
+                        data.forEach((l) => {
+                            // Key: "Dec 03 12:00"
+                            const t =
+                                l.time_local.split(":")[0] +
+                                ":" +
+                                l.time_local.split(":")[1];
+                            timeMap[t] = (timeMap[t] || 0) + 1;
+                        });
+                        // Sort keys
+                        const labels = Object.keys(timeMap).reverse(); // logs are reversed, so un-reverse for chart? No, logs are Newest First. We want Oldest First for chart.
+                        // Actually, my filteredLogs is Newest First.
+                        // So Object.keys will might be random order? No, keys are strings.
+                        // Let's sort chronologically.
+                        const sortedLabels = labels.sort((a, b) => {
+                            // simple string sort for "03/Dec/2025:12" works if format is consistent
+                            // But format is "03/Dec/2025:12". Day comes first.
+                            // Need date parse.
+                            const dateA = new Date(a.replace(":", " "));
+                            const dateB = new Date(b.replace(":", " "));
+                            return dateA - dateB;
+                        });
+
+                        const trafficData = sortedLabels.map((k) => timeMap[k]);
+
+                        // Status Data
+                        const statusCounts = {
+                            "2xx": 0,
+                            "3xx": 0,
+                            "4xx": 0,
+                            "5xx": 0,
+                        };
+                        data.forEach((l) => {
+                            const s = l.status.charAt(0);
+                            if (s === "2") statusCounts["2xx"]++;
+                            else if (s === "3") statusCounts["3xx"]++;
+                            else if (s === "4") statusCounts["4xx"]++;
+                            else if (s === "5") statusCounts["5xx"]++;
+                        });
+
+                        // Render Traffic Chart
+                        const trafficCtx = document
+                            .getElementById("trafficChart")
+                            .getContext("2d");
+                        if (trafficChartInstance)
+                            trafficChartInstance.destroy();
+                        trafficChartInstance = new Chart(trafficCtx, {
+                            type: "line",
+                            data: {
+                                labels: sortedLabels,
+                                datasets: [
+                                    {
+                                        label: "Requests",
+                                        data: trafficData,
+                                        borderColor: "#60A5FA",
+                                        backgroundColor:
+                                            "rgba(96, 165, 250, 0.1)",
+                                        tension: 0.4,
+                                        fill: true,
+                                    },
+                                ],
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: { legend: { display: false } },
+                                scales: {
+                                    y: {
+                                        grid: { color: "#374151" },
+                                        ticks: { color: "#9CA3AF" },
+                                    },
+                                    x: {
+                                        grid: { display: false },
+                                        ticks: { display: false },
+                                    }, // Hide x labels for cleanliness
+                                },
+                            },
+                        });
+
+                        // Render Status Chart
+                        const statusCtx = document
+                            .getElementById("statusChart")
+                            .getContext("2d");
+                        if (statusChartInstance) statusChartInstance.destroy();
+                        statusChartInstance = new Chart(statusCtx, {
+                            type: "doughnut",
+                            data: {
+                                labels: [
+                                    "2xx Success",
+                                    "3xx Redirect",
+                                    "4xx Client Err",
+                                    "5xx Server Err",
+                                ],
+                                datasets: [
+                                    {
+                                        data: [
+                                            statusCounts["2xx"],
+                                            statusCounts["3xx"],
+                                            statusCounts["4xx"],
+                                            statusCounts["5xx"],
+                                        ],
+                                        backgroundColor: [
+                                            "#10B981",
+                                            "#3B82F6",
+                                            "#F59E0B",
+                                            "#EF4444",
+                                        ],
+                                        borderWidth: 0,
+                                    },
+                                ],
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: {
+                                        position: "right",
+                                        labels: { color: "#9CA3AF" },
+                                    },
+                                },
+                            },
+                        });
+                    };
+
+                    watch(filteredLogs, () => {
+                        // Debounce slightly or just run
+                        setTimeout(updateCharts, 100);
                     });
-                };
 
-                watch(filteredLogs, () => {
-                    // Debounce slightly or just run
-                    setTimeout(updateCharts, 100);
-                });
+                    onMounted(() => {
+                        fetchLogs();
+                    });
 
-                onMounted(() => {
-                    fetchLogs();
-                });
-
-                return {
-                    logs, loading, searchQuery, timeRange, filteredLogs,
-                    totalRequests, uniqueIPs, errorRate, totalDataTransferred,
-                    topPaths, topIPs,
-                    formatTime, getStatusColor, parseUA, fetchLogs
-                };
-            }
-        }).mount('#app');
-    </script>
-</body>
+                    return {
+                        logs,
+                        loading,
+                        searchQuery,
+                        timeRange,
+                        autoRefresh,
+                        filteredLogs,
+                        totalRequests,
+                        uniqueIPs,
+                        errorRate,
+                        totalDataTransferred,
+                        topPaths,
+                        topIPs,
+                        formatTime,
+                        getStatusColor,
+                        parseUA,
+                        fetchLogs,
+                    };
+                },
+            }).mount("#app");
+        </script>
+    </body>
 </html>
