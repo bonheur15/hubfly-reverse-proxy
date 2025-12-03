@@ -35,6 +35,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/v1/sites/", s.handleSiteDetail) // GET, DELETE, PATCH
 	mux.HandleFunc("/v1/streams", s.handleStreams)       // GET, POST
 	mux.HandleFunc("/v1/streams/", s.handleStreamDetail) // GET, DELETE
+	mux.HandleFunc("/v1/logs", s.handleLogs)             // GET
 	return mux
 }
 

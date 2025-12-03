@@ -3,7 +3,7 @@ version: "3.8"
 services:
   hubfly:
     build: .
-    container_name: hubfly
+    container_name: hubfly-reverse-proxy
     restart: unless-stopped
     ports:
       - "80:80"
