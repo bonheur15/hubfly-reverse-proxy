@@ -57,6 +57,7 @@ jobs:
               -p 80:80 \
               -p 443:443 \
               -p 81:81 \
+              -p 82:82 \
               -p 30000-30100:30000-30100 \
               -v hubfly_proxy_data:/etc/hubfly \
               -v hubfly_proxy_certs:/etc/letsencrypt \
