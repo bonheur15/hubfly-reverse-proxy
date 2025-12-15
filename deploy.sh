@@ -42,6 +42,7 @@ services:
       - "80:80"
       - "443:443"
       - "81:81"
+      - "82:82"
       - "30000-30100:30000-30100"
     volumes:
       - hubfly_proxy_data:/etc/hubfly
