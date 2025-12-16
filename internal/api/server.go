@@ -280,9 +280,93 @@ func (s *Server) handleSiteDetail(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		jsonResponse(w, 200, map[string]string{"status": "deleted"})
+	case http.MethodPatch:
+		// Decode partial update
+		var input struct {
+			Domain          *string           `json:"domain"`
+			Upstreams       []string          `json:"upstreams"`
+			ForceSSL        *bool             `json:"force_ssl"`
+			SSL             *bool             `json:"ssl"`
+			ExtraConfig     *string           `json:"extra_config"`
+			ProxySetHeaders map[string]string `json:"proxy_set_header"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+			errorResponse(w, 400, "invalid json")
+			return
+		}
+
+		site, err := s.Store.GetSite(id)
+		if err != nil {
+			errorResponse(w, 404, "site not found")
+			return
+		}
+
+		// Detect if we need full re-provisioning (cert issuance) or just config reload
+		needsFullProvision := false
+
+		if input.Domain != nil && *input.Domain != site.Domain {
+			site.Domain = *input.Domain
+			needsFullProvision = true
+		}
+		if input.SSL != nil && *input.SSL != site.SSL {
+			site.SSL = *input.SSL
+			needsFullProvision = true
+		}
+
+		// Apply other updates
+		if input.Upstreams != nil {
+			site.Upstreams = input.Upstreams
+		}
+		if input.ForceSSL != nil {
+			site.ForceSSL = *input.ForceSSL
+		}
+		if input.ExtraConfig != nil {
+			site.ExtraConfig = *input.ExtraConfig
+		}
+		if input.ProxySetHeaders != nil {
+			site.ProxySetHeaders = input.ProxySetHeaders
+		}
+
+		site.UpdatedAt = time.Now()
+
+		if err := s.Store.SaveSite(site); err != nil {
+			errorResponse(w, 500, err.Error())
+			return
+		}
+
+		siteCopy := *site
+		if needsFullProvision {
+			go s.provisionSite(&siteCopy)
+		} else {
+			go s.refreshSiteConfig(&siteCopy)
+		}
+
+		jsonResponse(w, 200, site)
 	default:
 		http.Error(w, "method not allowed", 405)
 	}
+}
+
+func (s *Server) refreshSiteConfig(site *models.Site) {
+	s.updateStatus(site.ID, "provisioning", "refreshing config")
+
+	config, err := s.Nginx.GenerateConfig(site)
+	if err != nil {
+		s.updateStatus(site.ID, "error", "config gen failed: "+err.Error())
+		return
+	}
+
+	if err := s.Nginx.Validate(config); err != nil {
+		s.updateStatus(site.ID, "error", "config invalid: "+err.Error())
+		return
+	}
+
+	if err := s.Nginx.Apply(site.ID, config); err != nil {
+		s.updateStatus(site.ID, "error", "apply failed: "+err.Error())
+		return
+	}
+
+	s.updateStatus(site.ID, "active", "")
 }
 
 func (s *Server) provisionSite(site *models.Site) {
