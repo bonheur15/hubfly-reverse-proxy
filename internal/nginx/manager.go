@@ -94,6 +94,15 @@ server {
         {{ .TemplateSnippets }}
         {{ .ExtraConfig }}
     }
+
+    location /ws/ {
+        set $upstream_endpoint "http://{{ index .Upstreams 0 }}";
+        proxy_pass $upstream_endpoint;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Host $host;
+    }
     {{ end }}
 
     # Challenge path for Certbot
@@ -115,9 +124,6 @@ server {
     http2 on;
     server_name {{ .Domain }};
 
-    ssl_certificate /etc/letsencrypt/live/{{ .Domain }}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/{{ .Domain }}/privkey.pem;
-
     location / {
         set $upstream_endpoint "http://{{ index .Upstreams 0 }}";
         proxy_pass $upstream_endpoint;
@@ -134,6 +140,15 @@ server {
 
         {{ .TemplateSnippets }}
         {{ .ExtraConfig }}
+    }
+
+    location /ws/ {
+        set $upstream_endpoint "http://{{ index .Upstreams 0 }}";
+        proxy_pass $upstream_endpoint;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Host $host;
     }
 
     error_page 502 504 /502.html;
