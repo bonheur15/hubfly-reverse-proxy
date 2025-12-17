@@ -85,16 +85,17 @@ server {
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Connection "upgrade";
 
         {{ range $k, $v := .ProxySetHeaders }}
         proxy_set_header {{ $k }} {{ $v }};
         {{ end }}
-        
+
         {{ .TemplateSnippets }}
         {{ .ExtraConfig }}
     }
     {{ end }}
-    
+
     # Challenge path for Certbot
     location /.well-known/acme-challenge/ {
         root /var/www/hubfly;
@@ -125,11 +126,12 @@ server {
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Connection "upgrade";
 
         {{ range $k, $v := .ProxySetHeaders }}
         proxy_set_header {{ $k }} {{ $v }};
         {{ end }}
-        
+
         {{ .TemplateSnippets }}
         {{ .ExtraConfig }}
     }
@@ -180,7 +182,7 @@ func (m *Manager) RebuildStreamConfig(port int, streams []models.Stream) error {
 	}
 
 	var buf bytes.Buffer
-	
+
 	// Simple Pass-through (No SNI, Single Stream)
 	if !useSNI {
 		s := streams[0]
@@ -188,7 +190,7 @@ func (m *Manager) RebuildStreamConfig(port int, streams []models.Stream) error {
 		if s.Protocol == "udp" {
 			proto = " udp"
 		}
-		
+
 		// Plain server block
 		// We use a variable for upstream to prevent boot errors if container is down (requires resolver)
 		// But variables aren't allowed in 'upstream' directive, but can be used in proxy_pass
@@ -208,7 +210,7 @@ server {
 			Proto:      proto,
 			Upstream:   s.Upstream,
 		}
-		
+
 		t, _ := template.New("simple_stream").Parse(tmpl)
 		if err := t.Execute(&buf, data); err != nil {
 			return err
@@ -217,16 +219,16 @@ server {
 		// SNI Routing (TCP only usually)
 		// 1. Map block
 		// 2. Server block with ssl_preread
-		
+
 		// Map name needs to be unique per port
 		mapName := fmt.Sprintf("stream_map_%d", port)
-		
+
 		buf.WriteString(fmt.Sprintf("map $ssl_preread_server_name $%s {\n", mapName))
 		for _, s := range streams {
 			if s.Domain != "" {
 				buf.WriteString(fmt.Sprintf("    %s %s;\n", s.Domain, s.Upstream))
 			} else {
-				// Default/Catch-all if one is missing domain? 
+				// Default/Catch-all if one is missing domain?
 				// Or explicit default. For now, let's map "." (if supported) or use default clause
 			}
 		}
@@ -273,14 +275,14 @@ func (m *Manager) DeleteStreamConfig(port int) error {
 func (m *Manager) Validate(stagingFile string) error {
 	// In a real container, we run nginx -t.
 	// For local dev where nginx might not be installed, we skip or mock.
-	
+
 	// Strategy: use `nginx -t -c /etc/nginx/nginx.conf` but we need to inject our staging file.
-	// Since the main nginx.conf likely includes `/etc/hubfly/sites/*.conf`, 
+	// Since the main nginx.conf likely includes `/etc/hubfly/sites/*.conf`,
 	// we can temporary symlink staging file to sites/ OR use a specific test config.
-	
+
 	// For MVP, let's try to just syntax check the file if possible, or skip if too complex.
 	// Simpler: Just return nil for now if not in a proper env.
-	
+
 	return nil
 }
 
@@ -315,4 +317,3 @@ func (m *Manager) Delete(siteID string) error {
 }
 
 // DeleteStream removed from here as we now manage by port via DeleteStreamConfig
-
