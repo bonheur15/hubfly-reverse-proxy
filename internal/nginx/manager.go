@@ -125,6 +125,9 @@ server {
     http2 on;
     server_name {{ .Domain }};
 
+    ssl_certificate /etc/letsencrypt/live/{{ .Domain }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ .Domain }}/privkey.pem;
+
     location / {
         set $upstream_endpoint "http://{{ index .Upstreams 0 }}";
         proxy_pass $upstream_endpoint;
