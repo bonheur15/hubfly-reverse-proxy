@@ -3,6 +3,7 @@ package nginx
 import (
 	"bytes"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -176,6 +177,7 @@ server {
 	if err := os.WriteFile(stagingFile, buf.Bytes(), 0644); err != nil {
 		return "", err
 	}
+	slog.Debug("Generated staging config", "file", stagingFile)
 
 	return stagingFile, nil
 }
@@ -271,6 +273,7 @@ server {
 	if err := os.WriteFile(configFile, buf.Bytes(), 0644); err != nil {
 		return err
 	}
+	slog.Info("Rebuilt stream config", "port", port, "file", configFile)
 
 	return m.Reload()
 }
@@ -280,6 +283,7 @@ func (m *Manager) DeleteStreamConfig(port int) error {
 	if err := os.Remove(target); err != nil && !os.IsNotExist(err) {
 		return err
 	}
+	slog.Info("Deleted stream config", "port", port, "file", target)
 	return m.Reload()
 }
 
@@ -307,19 +311,24 @@ func (m *Manager) Apply(siteID, stagingFile string) error {
 	if err := os.Rename(stagingFile, target); err != nil {
 		return err
 	}
+	slog.Info("Applied site config", "site_id", siteID, "target", target)
 	return m.Reload()
 }
 
 func (m *Manager) Reload() error {
 	path, err := exec.LookPath("nginx")
 	if err != nil {
+		slog.Warn("Nginx not found, skipping reload")
 		return nil // Skip if no nginx
 	}
+	slog.Info("Reloading Nginx")
 	cmd := exec.Command(path, "-s", "reload")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
+		slog.Error("Nginx reload failed", "error", err, "output", string(out))
 		return fmt.Errorf("nginx reload failed: %s, output: %s", err, string(out))
 	}
+	slog.Debug("Nginx reload success", "output", string(out))
 	return nil
 }
 
@@ -328,6 +337,7 @@ func (m *Manager) Delete(siteID string) error {
 	if err := os.Remove(target); err != nil && !os.IsNotExist(err) {
 		return err
 	}
+	slog.Info("Deleted site config", "site_id", siteID, "file", target)
 	return m.Reload()
 }
 

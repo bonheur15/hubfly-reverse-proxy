@@ -1,9 +1,11 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
+	"io"
+	"log/slog"
 	"math/rand"
 	"net/http"
 	"time"
@@ -36,7 +38,50 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/v1/streams", s.handleStreams)       // GET, POST
 	mux.HandleFunc("/v1/streams/", s.handleStreamDetail) // GET, DELETE
 	mux.HandleFunc("/v1/logs", s.handleLogs)             // GET
-	return mux
+	
+	return s.loggingMiddleware(mux)
+}
+
+func (s *Server) loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		// Read body for logging if present
+		var bodyBytes []byte
+		if r.Body != nil && (r.Method == http.MethodPost || r.Method == http.MethodPatch || r.Method == http.MethodPut) {
+			bodyBytes, _ = io.ReadAll(r.Body)
+			r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes)) // Restore body
+		}
+
+		slog.Debug("API Request",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"remote", r.RemoteAddr,
+			"body", string(bodyBytes),
+		)
+
+		// Wrap ResponseWriter to capture status code
+		rw := &responseWriter{ResponseWriter: w, status: 200}
+		next.ServeHTTP(rw, r)
+
+		duration := time.Since(start)
+		slog.Info("API Response",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", rw.status,
+			"duration", duration,
+		)
+	})
+}
+
+type responseWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.status = code
+	rw.ResponseWriter.WriteHeader(code)
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
@@ -152,10 +197,12 @@ func (s *Server) handleStreamDetail(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) reconcileStreams(port int) {
+	slog.Info("Reconciling streams", "port", port)
+
 	// 1. List all streams
 	allStreams, err := s.Store.ListStreams()
 	if err != nil {
-		log.Printf("reconcile error: failed to list streams: %v", err)
+		slog.Error("reconcile error: failed to list streams", "error", err)
 		return
 	}
 
@@ -166,10 +213,11 @@ func (s *Server) reconcileStreams(port int) {
 			portStreams = append(portStreams, str)
 		}
 	}
+	slog.Debug("Found streams for port", "port", port, "count", len(portStreams))
 
 	// 3. Rebuild Config
 	if err := s.Nginx.RebuildStreamConfig(port, portStreams); err != nil {
-		log.Printf("reconcile error: failed to rebuild config for port %d: %v", port, err)
+		slog.Error("reconcile error: failed to rebuild config", "port", port, "error", err)
 		// Update status for all affected streams?
 		// For MVP, we log. In production, we should update status of all portStreams to 'error'.
 		return
@@ -181,6 +229,7 @@ func (s *Server) reconcileStreams(port int) {
 			s.updateStreamStatus(str.ID, "active", "")
 		}
 	}
+	slog.Info("Stream reconciliation complete", "port", port)
 }
 
 func (s *Server) provisionStream(stream *models.Stream) {
@@ -265,7 +314,7 @@ func (s *Server) handleSiteDetail(w http.ResponseWriter, r *http.Request) {
 
 		if revoke && site.SSL {
 			if err := s.Certbot.Revoke(site.Domain); err != nil {
-				log.Printf("failed to revoke cert for %s: %v", site.Domain, err)
+				slog.Error("Failed to revoke cert", "domain", site.Domain, "error", err)
 				// continue to delete
 			}
 		}
@@ -348,28 +397,35 @@ func (s *Server) handleSiteDetail(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) refreshSiteConfig(site *models.Site) {
+	slog.Info("Refreshing site config", "site_id", site.ID, "domain", site.Domain)
 	s.updateStatus(site.ID, "provisioning", "refreshing config")
 
 	config, err := s.Nginx.GenerateConfig(site)
 	if err != nil {
+		slog.Error("Config generation failed", "site_id", site.ID, "error", err)
 		s.updateStatus(site.ID, "error", "config gen failed: "+err.Error())
 		return
 	}
 
 	if err := s.Nginx.Validate(config); err != nil {
+		slog.Error("Config validation failed", "site_id", site.ID, "error", err)
 		s.updateStatus(site.ID, "error", "config invalid: "+err.Error())
 		return
 	}
 
 	if err := s.Nginx.Apply(site.ID, config); err != nil {
+		slog.Error("Config application failed", "site_id", site.ID, "error", err)
 		s.updateStatus(site.ID, "error", "apply failed: "+err.Error())
 		return
 	}
 
+	slog.Info("Site config refreshed successfully", "site_id", site.ID)
 	s.updateStatus(site.ID, "active", "")
 }
 
 func (s *Server) provisionSite(site *models.Site) {
+	slog.Info("Provisioning site", "site_id", site.ID, "domain", site.Domain, "ssl_requested", site.SSL)
+
 	// 1. Generate Nginx Config (HTTP)
 	// 2. Test & Reload
 	// 3. If SSL, Issue Cert -> Regenerate (SSL) -> Reload
@@ -390,28 +446,34 @@ func (s *Server) provisionSite(site *models.Site) {
 
 	staging, err := s.Nginx.GenerateConfig(site)
 	if err != nil {
+		slog.Error("Initial config generation failed", "site_id", site.ID, "error", err)
 		s.updateStatus(site.ID, "error", "config gen failed: "+err.Error())
 		return
 	}
 
 	if err := s.Nginx.Validate(staging); err != nil {
+		slog.Error("Initial config validation failed", "site_id", site.ID, "error", err)
 		s.updateStatus(site.ID, "error", "config invalid: "+err.Error())
 		return
 	}
 
 	if err := s.Nginx.Apply(site.ID, staging); err != nil {
+		slog.Error("Initial config application failed", "site_id", site.ID, "error", err)
 		s.updateStatus(site.ID, "error", "apply failed: "+err.Error())
 		return
 	}
 
 	if !originalSSL {
+		slog.Info("Site provisioned (HTTP only)", "site_id", site.ID)
 		s.updateStatus(site.ID, "active", "")
 		return
 	}
 
 	// Handle SSL
+	slog.Info("Starting SSL provisioning", "site_id", site.ID, "domain", site.Domain)
 	s.updateStatus(site.ID, "provisioning", "issuing certificate")
 	if err := s.Certbot.Issue(site.Domain); err != nil {
+		slog.Error("Certificate issuance failed", "site_id", site.ID, "domain", site.Domain, "error", err)
 		s.updateStatus(site.ID, "cert-failed", err.Error())
 		return
 	}
@@ -424,16 +486,19 @@ func (s *Server) provisionSite(site *models.Site) {
 
 	stagingSSL, err := s.Nginx.GenerateConfig(site)
 	if err != nil {
+		slog.Error("SSL config generation failed", "site_id", site.ID, "error", err)
 		s.updateStatus(site.ID, "error", "ssl config gen failed: "+err.Error())
 		return
 	}
 
 	// Validate & Apply
 	if err := s.Nginx.Apply(site.ID, stagingSSL); err != nil {
+		slog.Error("SSL config application failed", "site_id", site.ID, "error", err)
 		s.updateStatus(site.ID, "error", "ssl apply failed: "+err.Error())
 		return
 	}
 
+	slog.Info("Site provisioned with SSL", "site_id", site.ID)
 	s.updateStatus(site.ID, "active", "")
 }
 

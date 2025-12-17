@@ -2,6 +2,7 @@ package certbot
 
 import (
 	"fmt"
+	"log/slog"
 	"os/exec"
 )
 
@@ -34,9 +35,15 @@ func (m *Manager) Issue(domain string) error {
 		"-m", m.Email,
 	}
 
+	slog.Info("Running certbot issue", "domain", domain, "command", path, "args", args)
+
 	cmd := exec.Command(path, args...)
 	out, err := cmd.CombinedOutput()
+	
+	slog.Debug("Certbot output", "domain", domain, "output", string(out))
+
 	if err != nil {
+		slog.Error("Certbot issue failed", "domain", domain, "error", err, "output", string(out))
 		return fmt.Errorf("certbot failed: %s, output: %s", err, string(out))
 	}
 	return nil
@@ -52,9 +59,15 @@ func (m *Manager) Revoke(domain string) error {
 		return fmt.Errorf("certbot not found")
 	}
 
+	slog.Info("Running certbot revoke", "domain", domain, "cert_path", certPath)
+
 	cmd := exec.Command(path, "revoke", "--cert-path", certPath, "--reason", "unspecified", "--non-interactive")
 	out, err := cmd.CombinedOutput()
+
+	slog.Debug("Certbot revoke output", "domain", domain, "output", string(out))
+
 	if err != nil {
+		slog.Error("Certbot revoke failed", "domain", domain, "error", err, "output", string(out))
 		return fmt.Errorf("certbot revoke failed: %s, output: %s", err, string(out))
 	}
 	return nil

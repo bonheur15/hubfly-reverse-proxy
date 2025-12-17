@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -13,25 +13,37 @@ import (
 )
 
 func main() {
+	// Setup structured logging
+	opts := &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}
+	logger := slog.New(slog.NewTextHandler(os.Stdout, opts))
+	slog.SetDefault(logger)
+
 	configDir := flag.String("config-dir", "/etc/hubfly", "Directory for config and data")
 	port := flag.String("port", "81", "API listening port")
 	flag.Parse()
 
+	slog.Info("Initializing Hubfly...", "config_dir", *configDir, "port", *port)
+
 	// Ensure config dir exists
 	if err := os.MkdirAll(*configDir, 0755); err != nil {
-		log.Fatalf("Failed to create config dir: %v", err)
+		slog.Error("Failed to create config dir", "error", err)
+		os.Exit(1)
 	}
 
 	// Initialize Store
 	st, err := store.NewJSONStore(*configDir)
 	if err != nil {
-		log.Fatalf("Failed to initialize store: %v", err)
+		slog.Error("Failed to initialize store", "error", err)
+		os.Exit(1)
 	}
 
 	// Initialize Nginx Manager
 	nm := nginx.NewManager(*configDir)
 	if err := nm.EnsureDirs(); err != nil {
-		log.Fatalf("Failed to create nginx dirs: %v", err)
+		slog.Error("Failed to create nginx dirs", "error", err)
+		os.Exit(1)
 	}
 
 	// Initialize Certbot Manager
@@ -41,10 +53,10 @@ func main() {
 	// Initialize API Server
 	srv := api.NewServer(st, nm, cm)
 
-	log.Printf("Hubfly API starting on :%s...", *port)
-	log.Printf("Config Dir: %s", *configDir)
+	slog.Info("Hubfly API starting", "address", ":"+*port)
 
 	if err := http.ListenAndServe(":"+*port, srv.Routes()); err != nil {
-		log.Fatalf("Server failed: %v", err)
+		slog.Error("Server failed", "error", err)
+		os.Exit(1)
 	}
 }
