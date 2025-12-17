@@ -76,7 +76,14 @@ server {
     location / {
         return 301 https://$host$request_uri;
     }
-
+    location /ws/ {
+        set $upstream_endpoint "http://{{ index .Upstreams 0 }}";
+        proxy_pass $upstream_endpoint;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Host $host;
+    }
 
     {{ else }}
     location / {
@@ -135,6 +142,14 @@ server {
         {{ .ExtraConfig }}
     }
 
+    location /ws/ {
+        set $upstream_endpoint "http://{{ index .Upstreams 0 }}";
+        proxy_pass $upstream_endpoint;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Host $host;
+    }
 
     error_page 502 504 /502.html;
     location = /502.html {
