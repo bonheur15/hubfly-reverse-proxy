@@ -64,3 +64,19 @@ jobs:
               -v hubfly_proxy_webroot:/var/www/hubfly \
               -e TZ=UTC \
               ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+
+            # --- Attach Networks ---
+            PREFIX="proj-network-proj_"
+            echo "--- Re-attaching Project Networks ---"
+            
+            # Find matching networks
+            NETWORKS=$(docker network ls --format '{{.Name}}' | grep "^${PREFIX}")
+            
+            if [ -z "$NETWORKS" ]; then
+                echo "No networks found matching prefix '$PREFIX'."
+            else
+                for NET in $NETWORKS; do
+                    echo "Attaching network: $NET"
+                    docker network connect "$NET" "${{ env.CONTAINER_NAME }}" || echo "  -> Failed or already connected: $NET"
+                done
+            fi
