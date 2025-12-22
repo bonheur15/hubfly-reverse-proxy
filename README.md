@@ -41,27 +41,35 @@ The project uses explicit naming for Docker volumes and networks (e.g., `name: h
 
 ---
 
-## Analytics & Monitoring
+## Analytics (GoAccess)
 
-Hubfly includes a built-in Traffic Analytics Dashboard to visualize NGINX access logs in real-time.
+Hubfly integrates **GoAccess** for real-time, visual web traffic analytics.
 
-- **Dashboard URL**: `http://localhost:82/logs.html`
-- **Management Interface**: Port `82` (Serves both the UI and proxies API requests to avoid CORS).
+- **Dashboard URL**: `http://localhost:82/analytics.html`
+- **Access Control**: The analytics dashboard is **only available on the Management Port (82)**. It is blocked on the public HTTP port (80) to prevent unauthorized access.
+- **Privacy**: Access to the analytics dashboard itself is not logged to prevent self-tracking.
 
 ### Features
-- **Real-time Stats**: Total requests, unique IPs, error rates, and data transfer.
-- **Visualizations**: Interactive charts for traffic over time and status code distribution.
-- **Detailed Inspection**: Searchable log table, top requested paths, and top client IPs.
-- **Auto-Refresh**: Toggleable live updates (every 5 seconds).
-- **JSON Logging**: NGINX is configured to output structured JSON logs for reliable parsing.
+- **Real-time**: Updates via WebSocket (`/goaccess-ws`) on port 82.
+- **Visualizations**: Interactive graphs for visitors, bandwidth, requested files, and more.
+- **Metrics**: detailed breakdown of status codes, operating systems, browsers, and geo-location (if configured).
 
-### Logs API
-You can programmatically access the parsed logs via the API.
+---
 
-#### Get Logs
-Fetch the last N lines of the access log (default: 2000).
+## Network Management
+
+To simplify multi-project deployments, Hubfly includes a utility to automatically connect to specific Docker networks.
+
+### Automatic Network Attachment
+When deploying via `deploy.sh`, the system automatically runs `attach_networks.sh`.
+
+- **Function**: Scans for all Docker networks starting with the prefix `proj-network-proj_`.
+- **Action**: Attaches the `hubfly-reverse-proxy` container to these networks if not already connected.
+- **Use Case**: Allows the proxy to reach containers in other docker-compose projects without manual network configuration.
+
+You can also run this manually on the server:
 ```bash
-curl "http://localhost:82/v1/logs?limit=5000"
+./attach_networks.sh
 ```
 
 ---

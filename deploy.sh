@@ -71,12 +71,15 @@ EOF
 echo "[5/5] Deploying on server..."
 ssh "$SERVER" "mkdir -p $DEPLOY_DIR"
 scp docker-compose.prod.yml "$SERVER:$DEPLOY_DIR/docker-compose.yml"
+scp attach_networks.sh "$SERVER:$DEPLOY_DIR/attach_networks.sh"
 rm docker-compose.prod.yml
 
 ssh "$SERVER" "cd $DEPLOY_DIR && \
+  chmod +x attach_networks.sh && \
   gunzip -c ${IMAGE_NAME}.tar.gz | docker load && \
   rm ${IMAGE_NAME}.tar.gz && \
-  docker compose up -d || docker-compose up -d"
+  (docker compose up -d || docker-compose up -d) && \
+  ./attach_networks.sh"
 
 # Cleanup local
 rm ${IMAGE_NAME}.tar.gz
