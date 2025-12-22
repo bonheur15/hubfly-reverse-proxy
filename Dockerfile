@@ -9,14 +9,17 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/hubfly ./cmd/hubfly
 
 # Stage 2: Runtime
 FROM nginx:stable-alpine
-# Install Certbot and dependencies
-RUN apk add --no-cache certbot openssl bash ca-certificates
+# Install Certbot, GoAccess and dependencies
+RUN apk add --no-cache certbot openssl bash ca-certificates goaccess
 
 # Copy binary
 COPY --from=builder /out/hubfly /usr/local/bin/hubfly
 
 # Copy default nginx config
 COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
+
+# Copy goaccess config
+COPY goaccess.conf /etc/goaccess.conf
 
 # Copy startup script
 COPY start.sh /start.sh

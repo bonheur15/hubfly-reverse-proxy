@@ -11,6 +11,13 @@ set -e
 echo "Starting NGINX..."
 nginx
 
+# Ensure log file exists for GoAccess
+touch /var/log/hubfly/access.log
+
+# Start GoAccess
+echo "Starting GoAccess..."
+goaccess /var/log/hubfly/access.log --config-file=/etc/goaccess.conf --daemon
+
 # Start Hubfly
 echo "Starting Hubfly..."
 exec /usr/local/bin/hubfly --config-dir /etc/hubfly
