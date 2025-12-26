@@ -155,3 +155,52 @@ func TestFirewallRateLimiting(t *testing.T) {
 		}
 	}
 }
+
+func TestFirewallPathMethodBlocking(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "nginx_test_pm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	mgr := NewManager(tmpDir)
+	if err := mgr.EnsureDirs(); err != nil {
+		t.Fatal(err)
+	}
+
+	site := &models.Site{
+		ID:        "test-pm",
+		Domain:    "pm.local",
+		Upstreams: []string{"127.0.0.1:8080"},
+		Firewall: &models.FirewallConfig{
+			BlockRules: &models.BlockRules{
+				PathMethods: map[string][]string{
+					"/admin": {"POST", "DELETE"},
+				},
+			},
+		},
+	}
+
+	configFile, err := mgr.GenerateConfig(site)
+	if err != nil {
+		t.Fatalf("GenerateConfig failed: %v", err)
+	}
+
+	content, err := os.ReadFile(configFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	configStr := string(content)
+
+	expectedStrings := []string{
+		"location ~ /admin {",
+		`if ($request_method ~* "(POST|DELETE)") { return 405; }`,
+		"proxy_pass", // Ensure it still proxies
+	}
+
+	for _, s := range expectedStrings {
+		if !strings.Contains(configStr, s) {
+			t.Errorf("Config missing path-method rule: %s", s)
+		}
+	}
+}

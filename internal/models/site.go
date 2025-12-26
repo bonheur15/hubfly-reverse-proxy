@@ -48,9 +48,10 @@ type IPRule struct {
 
 // BlockRules defines patterns to block requests
 type BlockRules struct {
-	UserAgents []string `json:"user_agents,omitempty"` // Regex patterns for User-Agent
-	Methods    []string `json:"methods,omitempty"`     // HTTP Methods to block (e.g., POST, PUT)
-	Paths      []string `json:"paths,omitempty"`       // Regex patterns for URL paths
+	UserAgents  []string            `json:"user_agents,omitempty"` // Regex patterns for User-Agent
+	Methods     []string            `json:"methods,omitempty"`     // HTTP Methods to block (e.g., POST, PUT)
+	Paths       []string            `json:"paths,omitempty"`       // Regex patterns for URL paths
+	PathMethods map[string][]string `json:"path_methods,omitempty"` // Map of Path -> []Methods to block
 }
 
 // RateLimitConfig defines rate limiting parameters

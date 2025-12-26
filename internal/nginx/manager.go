@@ -89,6 +89,26 @@ server {
     {{ range .Firewall.BlockRules.Paths }}
     location ~ {{ . }} { return 403; }
     {{ end }}
+    {{ range $path, $methods := .Firewall.BlockRules.PathMethods }}
+    location ~ {{ $path }} {
+        if ($request_method ~* "({{ join $methods "|" }})") { return 405; }
+        # Fallback to main proxy pass if method allowed? 
+        # Note: 'location' blocks capture request. We need to proxy_pass here too if not blocked.
+        # But duplication is messy. 
+        # Better strategy: strict match location with limit_except or if.
+        # If we use location ~ $path, it takes precedence.
+        # So we must include proxy logic inside.
+        set $upstream_endpoint "http://{{ index $.Upstreams 0 }}";
+        proxy_pass $upstream_endpoint;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Host $host;
+        {{ range $k, $v := $.ProxySetHeaders }}
+        proxy_set_header {{ $k }} {{ $v }};
+        {{ end }}
+    }
+    {{ end }}
     {{ end }}
     {{ end }}
 
@@ -167,6 +187,28 @@ server {
     server_name {{ .Domain }};
 
     ssl_certificate_key /etc/letsencrypt/live/{{ .Domain }}/privkey.pem;
+
+    {{ if .Firewall }}
+    {{ if .Firewall.BlockRules }}
+    {{ range .Firewall.BlockRules.Paths }}
+    location ~ {{ . }} { return 403; }
+    {{ end }}
+    {{ range $path, $methods := .Firewall.BlockRules.PathMethods }}
+    location ~ {{ $path }} {
+        if ($request_method ~* "({{ join $methods "|" }})") { return 405; }
+        set $upstream_endpoint "http://{{ index $.Upstreams 0 }}";
+        proxy_pass $upstream_endpoint;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Host $host;
+        {{ range $k, $v := $.ProxySetHeaders }}
+        proxy_set_header {{ $k }} {{ $v }};
+        {{ end }}
+    }
+    {{ end }}
+    {{ end }}
+    {{ end }}
 
     location / {
         set $upstream_endpoint "http://{{ index .Upstreams 0 }}";
