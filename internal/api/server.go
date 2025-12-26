@@ -302,6 +302,12 @@ func (s *Server) handleSiteDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if strings.HasSuffix(id, "/firewall") {
+		realID := strings.TrimSuffix(id, "/firewall")
+		s.handleSiteFirewall(w, r, realID)
+		return
+	}
+
 	switch r.Method {
 	case http.MethodGet:
 		site, err := s.Store.GetSite(id)
@@ -590,4 +596,24 @@ func (s *Server) handleSiteLogs(w http.ResponseWriter, r *http.Request, siteID s
 		}
 		jsonResponse(w, 200, logs)
 	}
+}
+
+func (s *Server) handleSiteFirewall(w http.ResponseWriter, r *http.Request, siteID string) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+
+	site, err := s.Store.GetSite(siteID)
+	if err != nil {
+		errorResponse(w, 404, "site not found")
+		return
+	}
+
+	if site.Firewall == nil {
+		jsonResponse(w, 200, models.FirewallConfig{}) // Return empty config if nil
+		return
+	}
+
+	jsonResponse(w, 200, site.Firewall)
 }
