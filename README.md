@@ -171,6 +171,28 @@ curl -X DELETE http://localhost:81/v1/streams/db-1:3306
 curl -X DELETE http://localhost:81/v1/streams/mysql-db1
 ```
 
+### 8. Retrieve Site Logs
+Access detailed logs for a specific site. Logs are stored individually per domain (`.access.log` and `.error.log`).
+
+**Endpoint:** `GET /v1/sites/{id}/logs`
+
+**Query Parameters:**
+- `type` (optional): `access` (default) or `error`.
+- `limit` (optional): Number of recent lines to return (default: 100).
+- `search` (optional): Filter logs containing a specific string.
+- `since` (optional): Filter logs after a specific timestamp (RFC3339 format, e.g., `2025-12-26T10:00:00Z`).
+- `until` (optional): Filter logs before a specific timestamp.
+
+**Example: Get recent errors**
+```bash
+curl "http://localhost:81/v1/sites/my-site/logs?type=error&limit=50"
+```
+
+**Example: Search access logs for POST requests**
+```bash
+curl "http://localhost:81/v1/sites/my-site/logs?type=access&search=POST&limit=20"
+```
+
 ---
 
 ## Project Structure
@@ -179,6 +201,7 @@ curl -X DELETE http://localhost:81/v1/streams/mysql-db1
 - **/internal/api**: REST API handlers and routing.
 - **/internal/nginx**: NGINX configuration generation, validation, and reloading.
 - **/internal/certbot**: Wrapper for Certbot (SSL issuance/revocation).
+- **/internal/logmanager**: Log reading, filtering, and parsing logic.
 - **/internal/store**: JSON-based persistence for site metadata.
 - **/static**: Web frontend assets (Dashboard, Analytics UI).
 - **/templates**: NGINX configuration snippets (e.g., caching, security).

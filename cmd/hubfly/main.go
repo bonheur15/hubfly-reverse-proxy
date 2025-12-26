@@ -8,6 +8,7 @@ import (
 
 	"github.com/hubfly/hubfly-reverse-proxy/internal/api"
 	"github.com/hubfly/hubfly-reverse-proxy/internal/certbot"
+	"github.com/hubfly/hubfly-reverse-proxy/internal/logmanager"
 	"github.com/hubfly/hubfly-reverse-proxy/internal/nginx"
 	"github.com/hubfly/hubfly-reverse-proxy/internal/store"
 )
@@ -50,8 +51,11 @@ func main() {
 	// We assume webroot at /var/www/hubfly as per design
 	cm := certbot.NewManager("/var/www/hubfly", "cert-support@hubfly.app")
 
+	// Initialize Log Manager
+	lm := logmanager.NewManager("/var/log/hubfly")
+
 	// Initialize API Server
-	srv := api.NewServer(st, nm, cm)
+	srv := api.NewServer(st, nm, cm, lm)
 
 	slog.Info("Hubfly API starting", "address", ":"+*port)
 

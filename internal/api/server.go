@@ -8,25 +8,30 @@ import (
 	"log/slog"
 	"math/rand"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/hubfly/hubfly-reverse-proxy/internal/certbot"
+	"github.com/hubfly/hubfly-reverse-proxy/internal/logmanager"
 	"github.com/hubfly/hubfly-reverse-proxy/internal/models"
 	"github.com/hubfly/hubfly-reverse-proxy/internal/nginx"
 	"github.com/hubfly/hubfly-reverse-proxy/internal/store"
 )
 
 type Server struct {
-	Store   store.Store
-	Nginx   *nginx.Manager
-	Certbot *certbot.Manager
+	Store      store.Store
+	Nginx      *nginx.Manager
+	Certbot    *certbot.Manager
+	LogManager *logmanager.Manager
 }
 
-func NewServer(s store.Store, n *nginx.Manager, c *certbot.Manager) *Server {
+func NewServer(s store.Store, n *nginx.Manager, c *certbot.Manager, l *logmanager.Manager) *Server {
 	return &Server{
-		Store:   s,
-		Nginx:   n,
-		Certbot: c,
+		Store:      s,
+		Nginx:      n,
+		Certbot:    c,
+		LogManager: l,
 	}
 }
 
@@ -86,8 +91,6 @@ func (rw *responseWriter) WriteHeader(code int) {
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	jsonResponse(w, 200, map[string]string{"status": "ok"})
 }
-
-// ... handleSites and handleSiteDetail omitted for brevity ...
 
 func (s *Server) handleStreams(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
@@ -290,6 +293,12 @@ func (s *Server) handleSiteDetail(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Path[len("/v1/sites/"):]
 	if id == "" {
 		http.NotFound(w, r)
+		return
+	}
+
+	if strings.HasSuffix(id, "/logs") {
+		realID := strings.TrimSuffix(id, "/logs")
+		s.handleSiteLogs(w, r, realID)
 		return
 	}
 
@@ -523,4 +532,58 @@ func errorResponse(w http.ResponseWriter, code int, msg string) {
 		"error": msg,
 		"code":  code,
 	})
+}
+
+func (s *Server) handleSiteLogs(w http.ResponseWriter, r *http.Request, siteID string) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+
+	// Parse Query Params
+	logType := r.URL.Query().Get("type")
+	if logType == "" {
+		logType = "access"
+	}
+
+	limitStr := r.URL.Query().Get("limit")
+	limit := 100
+	if limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil {
+			limit = l
+		}
+	}
+
+	search := r.URL.Query().Get("search")
+
+	var since, until time.Time
+	if t := r.URL.Query().Get("since"); t != "" {
+		since, _ = time.Parse(time.RFC3339, t)
+	}
+	if t := r.URL.Query().Get("until"); t != "" {
+		until, _ = time.Parse(time.RFC3339, t)
+	}
+
+	opts := logmanager.LogOptions{
+		Limit:  limit,
+		Since:  since,
+		Until:  until,
+		Search: search,
+	}
+
+	if logType == "error" {
+		logs, err := s.LogManager.GetErrorLogs(siteID, opts)
+		if err != nil {
+			errorResponse(w, 500, "failed to read error logs: "+err.Error())
+			return
+		}
+		jsonResponse(w, 200, logs)
+	} else {
+		logs, err := s.LogManager.GetAccessLogs(siteID, opts)
+		if err != nil {
+			errorResponse(w, 500, "failed to read access logs: "+err.Error())
+			return
+		}
+		jsonResponse(w, 200, logs)
+	}
 }
