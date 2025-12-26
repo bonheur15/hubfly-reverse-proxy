@@ -76,6 +76,14 @@ server {
     access_log /var/log/hubfly/{{ .ID }}.access.log hubfly;
     error_log /var/log/hubfly/{{ .ID }}.error.log notice;
 
+    {{ if .Firewall }}
+    {{ if .Firewall.BlockRules }}
+    {{ range .Firewall.BlockRules.Paths }}
+    location ~ {{ . }} { return 403; }
+    {{ end }}
+    {{ end }}
+    {{ end }}
+
     {{ if .ForceSSL }}
     location / {
         return 301 https://$host$request_uri;
@@ -96,6 +104,15 @@ server {
         {{ if .Firewall }}
         {{ range .Firewall.IPRules }}
         {{ .Action }} {{ .Value }};
+        {{ end }}
+        
+        {{ if .Firewall.BlockRules }}
+        {{ if .Firewall.BlockRules.UserAgents }}
+        if ($http_user_agent ~* "({{ join .Firewall.BlockRules.UserAgents "|" }})") { return 403; }
+        {{ end }}
+        {{ if .Firewall.BlockRules.Methods }}
+        if ($request_method ~* "({{ join .Firewall.BlockRules.Methods "|" }})") { return 405; }
+        {{ end }}
         {{ end }}
         {{ end }}
 
@@ -135,13 +152,23 @@ server {
     http2 on;
     server_name {{ .Domain }};
 
-    ssl_certificate /etc/letsencrypt/live/{{ .Domain }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ .Domain }}/privkey.pem;
+
     location / {
         set $upstream_endpoint "http://{{ index .Upstreams 0 }}";
 
         {{ if .Firewall }}
         {{ range .Firewall.IPRules }}
         {{ .Action }} {{ .Value }};
+        {{ end }}
+
+        {{ if .Firewall.BlockRules }}
+        {{ if .Firewall.BlockRules.UserAgents }}
+        if ($http_user_agent ~* "({{ join .Firewall.BlockRules.UserAgents "|" }})") { return 403; }
+        {{ end }}
+        {{ if .Firewall.BlockRules.Methods }}
+        if ($request_method ~* "({{ join .Firewall.BlockRules.Methods "|" }})") { return 405; }
+        {{ end }}
         {{ end }}
         {{ end }}
 
@@ -181,7 +208,11 @@ server {
 	// Note: This is a simplified template for MVP.
 	// Real implementation should load from m.TemplatesDir and handle "Templates" list (caching, etc).
 
-	t, err := template.New("site").Parse(serverTmpl)
+	funcMap := template.FuncMap{
+		"join": strings.Join,
+	}
+
+	t, err := template.New("site").Funcs(funcMap).Parse(serverTmpl)
 	if err != nil {
 		return "", err
 	}

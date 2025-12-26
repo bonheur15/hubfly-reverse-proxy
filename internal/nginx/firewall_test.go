@@ -56,3 +56,53 @@ func TestFirewallIPRules(t *testing.T) {
 		}
 	}
 }
+
+func TestFirewallBlockingRules(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "nginx_test_block")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	mgr := NewManager(tmpDir)
+	if err := mgr.EnsureDirs(); err != nil {
+		t.Fatal(err)
+	}
+
+	site := &models.Site{
+		ID:        "test-block",
+		Domain:    "block.local",
+		Upstreams: []string{"127.0.0.1:8080"},
+		Firewall: &models.FirewallConfig{
+			BlockRules: &models.BlockRules{
+				Paths:      []string{"/admin", "/private"},
+				UserAgents: []string{"curl", "wget"},
+				Methods:    []string{"POST", "DELETE"},
+			},
+		},
+	}
+
+	configFile, err := mgr.GenerateConfig(site)
+	if err != nil {
+		t.Fatalf("GenerateConfig failed: %v", err)
+	}
+
+	content, err := os.ReadFile(configFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	configStr := string(content)
+
+	expectedStrings := []string{
+		"location ~ /admin { return 403; }",
+		"location ~ /private { return 403; }",
+		`if ($http_user_agent ~* "(curl|wget)") { return 403; }`,
+		`if ($request_method ~* "(POST|DELETE)") { return 405; }`,
+	}
+
+	for _, s := range expectedStrings {
+		if !strings.Contains(configStr, s) {
+			t.Errorf("Config missing blocking rule: %s", s)
+		}
+	}
+}
