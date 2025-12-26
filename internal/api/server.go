@@ -346,6 +346,7 @@ func (s *Server) handleSiteDetail(w http.ResponseWriter, r *http.Request) {
 			SSL             *bool             `json:"ssl"`
 			ExtraConfig     *string           `json:"extra_config"`
 			ProxySetHeaders map[string]string `json:"proxy_set_header"`
+			Firewall        *models.FirewallConfig `json:"firewall"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 			errorResponse(w, 400, "invalid json")
@@ -382,6 +383,9 @@ func (s *Server) handleSiteDetail(w http.ResponseWriter, r *http.Request) {
 		}
 		if input.ProxySetHeaders != nil {
 			site.ProxySetHeaders = input.ProxySetHeaders
+		}
+		if input.Firewall != nil {
+			site.Firewall = input.Firewall
 		}
 
 		site.UpdatedAt = time.Now()

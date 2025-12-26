@@ -92,6 +92,13 @@ server {
     {{ else }}
     location / {
         set $upstream_endpoint "http://{{ index .Upstreams 0 }}";
+
+        {{ if .Firewall }}
+        {{ range .Firewall.IPRules }}
+        {{ .Action }} {{ .Value }};
+        {{ end }}
+        {{ end }}
+
         proxy_pass $upstream_endpoint;
 
         # WebSocket Support
@@ -129,13 +136,15 @@ server {
     server_name {{ .Domain }};
 
     ssl_certificate /etc/letsencrypt/live/{{ .Domain }}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/{{ .Domain }}/privkey.pem;
-
-    access_log /var/log/hubfly/{{ .ID }}.access.log hubfly;
-    error_log /var/log/hubfly/{{ .ID }}.error.log notice;
-
     location / {
         set $upstream_endpoint "http://{{ index .Upstreams 0 }}";
+
+        {{ if .Firewall }}
+        {{ range .Firewall.IPRules }}
+        {{ .Action }} {{ .Value }};
+        {{ end }}
+        {{ end }}
+
         proxy_pass $upstream_endpoint;
 
         # WebSocket Support
