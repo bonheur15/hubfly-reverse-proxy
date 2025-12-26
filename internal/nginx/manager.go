@@ -69,6 +69,14 @@ func (m *Manager) GenerateConfig(site *models.Site) (string, error) {
 	// Basic server block template
 	// In a real app, this might be loaded from a file.
 	const serverTmpl = `
+{{ if .Firewall }}
+{{ if .Firewall.RateLimit }}
+{{ if .Firewall.RateLimit.Enabled }}
+limit_req_zone $binary_remote_addr zone=zone_{{ .ID }}:10m rate={{ .Firewall.RateLimit.Rate }}{{ .Firewall.RateLimit.Unit }};
+{{ end }}
+{{ end }}
+{{ end }}
+
 server {
     listen 80;
     server_name {{ .Domain }};
@@ -112,6 +120,12 @@ server {
         {{ end }}
         {{ if .Firewall.BlockRules.Methods }}
         if ($request_method ~* "({{ join .Firewall.BlockRules.Methods "|" }})") { return 405; }
+        {{ end }}
+        {{ end }}
+
+        {{ if .Firewall.RateLimit }}
+        {{ if .Firewall.RateLimit.Enabled }}
+        limit_req zone=zone_{{ .ID }} burst={{ .Firewall.RateLimit.Burst }} nodelay;
         {{ end }}
         {{ end }}
         {{ end }}
@@ -168,6 +182,12 @@ server {
         {{ end }}
         {{ if .Firewall.BlockRules.Methods }}
         if ($request_method ~* "({{ join .Firewall.BlockRules.Methods "|" }})") { return 405; }
+        {{ end }}
+        {{ end }}
+
+        {{ if .Firewall.RateLimit }}
+        {{ if .Firewall.RateLimit.Enabled }}
+        limit_req zone=zone_{{ .ID }} burst={{ .Firewall.RateLimit.Burst }} nodelay;
         {{ end }}
         {{ end }}
         {{ end }}

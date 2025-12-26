@@ -106,3 +106,52 @@ func TestFirewallBlockingRules(t *testing.T) {
 		}
 	}
 }
+
+func TestFirewallRateLimiting(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "nginx_test_rate")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	mgr := NewManager(tmpDir)
+	if err := mgr.EnsureDirs(); err != nil {
+		t.Fatal(err)
+	}
+
+	site := &models.Site{
+		ID:        "test-rate",
+		Domain:    "rate.local",
+		Upstreams: []string{"127.0.0.1:8080"},
+		Firewall: &models.FirewallConfig{
+			RateLimit: &models.RateLimitConfig{
+				Enabled: true,
+				Rate:    10,
+				Unit:    "r/s",
+				Burst:   20,
+			},
+		},
+	}
+
+	configFile, err := mgr.GenerateConfig(site)
+	if err != nil {
+		t.Fatalf("GenerateConfig failed: %v", err)
+	}
+
+	content, err := os.ReadFile(configFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	configStr := string(content)
+
+	expectedStrings := []string{
+		"limit_req_zone $binary_remote_addr zone=zone_test-rate:10m rate=10r/s;",
+		"limit_req zone=zone_test-rate burst=20 nodelay;",
+	}
+
+	for _, s := range expectedStrings {
+		if !strings.Contains(configStr, s) {
+			t.Errorf("Config missing rate limit rule: %s", s)
+		}
+	}
+}
