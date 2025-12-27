@@ -173,6 +173,12 @@ server {
         try_files $uri =404;
     }
 
+    error_page 403 /403.html;
+    location = /403.html {
+        root /var/www/hubfly/static;
+        internal;
+    }
+
     error_page 502 504 /502.html;
     location = /502.html {
         root /var/www/hubfly/static;
@@ -257,6 +263,12 @@ server {
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
         proxy_set_header Host $host;
+    }
+
+    error_page 403 /403.html;
+    location = /403.html {
+        root /var/www/hubfly/static;
+        internal;
     }
 
     error_page 502 504 /502.html;
