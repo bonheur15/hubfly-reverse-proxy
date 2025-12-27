@@ -599,21 +599,53 @@ func (s *Server) handleSiteLogs(w http.ResponseWriter, r *http.Request, siteID s
 }
 
 func (s *Server) handleSiteFirewall(w http.ResponseWriter, r *http.Request, siteID string) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", 405)
-		return
-	}
-
 	site, err := s.Store.GetSite(siteID)
 	if err != nil {
 		errorResponse(w, 404, "site not found")
 		return
 	}
 
-	if site.Firewall == nil {
-		jsonResponse(w, 200, models.FirewallConfig{}) // Return empty config if nil
-		return
-	}
+	switch r.Method {
+	case http.MethodGet:
+		if site.Firewall == nil {
+			jsonResponse(w, 200, models.FirewallConfig{})
+			return
+		}
+		jsonResponse(w, 200, site.Firewall)
 
-	jsonResponse(w, 200, site.Firewall)
+	case http.MethodDelete:
+		if site.Firewall == nil {
+			jsonResponse(w, 200, map[string]string{"status": "no firewall rules to clear"})
+			return
+		}
+
+		section := r.URL.Query().Get("section")
+		switch section {
+		case "ip_rules":
+			site.Firewall.IPRules = nil
+		case "rate_limit":
+			site.Firewall.RateLimit = nil
+		case "block_rules":
+			site.Firewall.BlockRules = nil
+		case "all", "":
+			site.Firewall = nil
+		default:
+			errorResponse(w, 400, "invalid section: must be ip_rules, rate_limit, block_rules, or all")
+			return
+		}
+
+		site.UpdatedAt = time.Now()
+		if err := s.Store.SaveSite(site); err != nil {
+			errorResponse(w, 500, err.Error())
+			return
+		}
+
+		// Apply changes
+		go s.refreshSiteConfig(site)
+
+		jsonResponse(w, 200, map[string]string{"status": "cleared", "section": section})
+
+	default:
+		http.Error(w, "method not allowed", 405)
+	}
 }
