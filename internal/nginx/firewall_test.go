@@ -204,3 +204,46 @@ func TestFirewallPathMethodBlocking(t *testing.T) {
 		}
 	}
 }
+
+func TestSSLConfig(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "nginx_test_ssl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	mgr := NewManager(tmpDir)
+	if err := mgr.EnsureDirs(); err != nil {
+		t.Fatal(err)
+	}
+
+	site := &models.Site{
+		ID:        "test-ssl",
+		Domain:    "ssl.local",
+		Upstreams: []string{"127.0.0.1:8080"},
+		SSL:       true,
+	}
+
+	configFile, err := mgr.GenerateConfig(site)
+	if err != nil {
+		t.Fatalf("GenerateConfig failed: %v", err)
+	}
+
+	content, err := os.ReadFile(configFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	configStr := string(content)
+
+	expectedStrings := []string{
+		"listen 443 ssl;",
+		"ssl_certificate /etc/letsencrypt/live/ssl.local/fullchain.pem;",
+		"ssl_certificate_key /etc/letsencrypt/live/ssl.local/privkey.pem;",
+	}
+
+	for _, s := range expectedStrings {
+		if !strings.Contains(configStr, s) {
+			t.Errorf("Config missing SSL directive: %s", s)
+		}
+	}
+}
