@@ -90,12 +90,12 @@ Forward traffic from `example.local` to a local upstream (e.g., a container IP o
 curl -X POST http://localhost:81/v1/sites \
   -H "Content-Type: application/json" \
   -d '{
-    "id": "my-site-4",
+    "id": "example.local",
     "domain": "example.local",
-    "upstreams": ["127.0.0.1:9020"],
-    "ssl": true,
-    "force_ssl": true,
-    "templates": ["security-headers"]
+    "upstreams": ["simple-server:80"],
+    "ssl": false,
+    "force_ssl": false,
+    "templates": []
   }'
 ```
 *Note: To test this locally, add `127.0.0.1 example.local` to your `/etc/hosts`.*
@@ -124,13 +124,13 @@ curl http://localhost:81/v1/sites
 ### 5. Get Site Details
 View configuration for a specific site.
 ```bash
-curl http://localhost:81/v1/sites/my-site
+curl http://localhost:81/v1/sites/example.local
 ```
 
 ### 6. Delete a Site
 Remove the NGINX config. Add `?revoke_cert=true` to also revoke the SSL certificate.
 ```bash
-curl -X DELETE http://localhost:81/v1/sites/secure-site-1?revoke_cert=true
+curl -X DELETE http://localhost:81/v1/sites/example.local
 # OR with revocation
 # curl -X DELETE "http://localhost:81/v1/sites/secure-site?revoke_cert=true"
 ```
@@ -185,12 +185,131 @@ Access detailed logs for a specific site. Logs are stored individually per domai
 
 **Example: Get recent errors**
 ```bash
-curl "http://localhost:81/v1/sites/my-site/logs?type=error&limit=50"
+curl "http://localhost:81/v1/sites/example.local/logs?type=error&limit=50"
 ```
 
 **Example: Search access logs for POST requests**
 ```bash
-curl "http://localhost:81/v1/sites/my-site/logs?type=access&search=POST&limit=20"
+curl "http://localhost:81/v1/sites/example.local/logs?type=access&search=POST&limit=20"
+```
+
+### 9. Firewall Management
+Configure advanced access control rules per site.
+
+**IP-based Access Control**
+Allow or deny traffic from specific IP addresses or CIDR ranges. Rules are processed in order.
+
+**Endpoint:** `PATCH /v1/sites/{id}`
+
+**Example: Whitelist specific IP, deny subnet, allow others**
+```bash
+curl -X PATCH http://localhost:81/v1/sites/example.local \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firewall": {
+      "ip_rules": [
+        {"action": "allow", "value": "192.168.1.100"},
+        {"action": "deny", "value": "192.168.1.0/24"},
+        {"action": "allow", "value": "all"}
+      ]
+    }
+  }'
+```
+
+**Basic Request Filtering**
+Block requests based on User-Agent, HTTP Method, or URL Path.
+- **User Agents**: Regex pattern matching (case-insensitive).
+- **Methods**: Block specific HTTP methods (e.g., POST, DELETE).
+- **Paths**: Block specific URL paths (regex supported).
+
+**Example: Block 'curl' agent, DELETE method, and '/admin' path**
+```bash
+curl -X PATCH http://localhost:81/v1/sites/example.local \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firewall": {
+      "block_rules": {
+        "user_agents": ["curl", "wget", "scanner"],
+        "methods": ["DELETE", "PUT"],
+        "paths": ["/admin", "/private", "/.git"]
+      }
+    }
+  }'
+```
+
+**Rate Limiting**
+Protect against abuse and DDoS attacks by limiting request rates.
+- **Rate**: Number of requests allowed per unit (e.g., 10).
+- **Unit**: `r/s` (requests per second) or `r/m` (requests per minute).
+- **Burst**: Allow a burst of requests above the limit (nodelay).
+
+**Example: Limit to 10 requests/second with a burst of 20**
+```bash
+curl -X PATCH http://localhost:81/v1/sites/example.local \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firewall": {
+      "rate_limit": {
+        "enabled": true,
+        "rate": 10,
+        "unit": "r/s",
+        "burst": 20
+      }
+    }
+  }'
+```
+
+**Path-Specific Method Blocking**
+Block specific HTTP methods for defined paths (e.g., prevent POST to /admin).
+
+**Example: Block POST and DELETE on /admin**
+```bash
+curl -X PATCH http://localhost:81/v1/sites/example.local \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firewall": {
+      "block_rules": {
+        "path_methods": {
+          "/admin": ["POST", "DELETE"],
+          "/api/readonly": ["PUT", "PATCH", "DELETE"]
+        }
+      }
+    }
+  }'
+```
+
+**View Firewall Rules**
+Get the current firewall configuration for a site.
+
+**Endpoint:** `GET /v1/sites/{id}/firewall`
+
+**Example:**
+```bash
+curl http://localhost:81/v1/sites/example.local/firewall
+```
+
+**Clear Firewall Rules**
+Remove specific sections of the firewall configuration or clear everything.
+
+**Endpoint:** `DELETE /v1/sites/{id}/firewall`
+
+**Query Parameters:**
+- `section`: The section to clear. Options:
+    - `ip_rules`: Clear all IP Allow/Deny rules.
+    - `block_rules`: Clear all Request Filtering rules.
+    - `rate_limit`: Disable and clear Rate Limiting.
+    - `all` (or empty): Clear ALL firewall rules.
+
+**Examples:**
+```bash
+# Clear only IP rules
+curl -X DELETE "http://localhost:81/v1/sites/example.local/firewall?section=ip_rules"
+
+# Clear Rate Limiting
+curl -X DELETE "http://localhost:81/v1/sites/example.local/firewall?section=rate_limit"
+
+# Clear Everything
+curl -X DELETE "http://localhost:81/v1/sites/example.local/firewall"
 ```
 
 ---

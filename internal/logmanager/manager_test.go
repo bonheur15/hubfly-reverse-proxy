@@ -35,7 +35,7 @@ func TestGetAccessLogs(t *testing.T) {
 	if len(logs) != 3 {
 		t.Errorf("Expected 3 logs, got %d", len(logs))
 	}
-	if logs[0].Request != "GET /old HTTP/1.1" {
+	if logs[0].Request != "POST /api HTTP/1.1" {
 		t.Errorf("First log request mismatch: %s", logs[0].Request)
 	}
 
@@ -99,10 +99,10 @@ func TestGetErrorLogs(t *testing.T) {
 	if len(logs) != 2 {
 		t.Errorf("Expected 2 logs, got %d", len(logs))
 	}
-	if logs[0].Level != "error" {
-		t.Errorf("Expected error level, got %s", logs[0].Level)
+	if logs[0].Level != "warn" {
+		t.Errorf("Expected warn level, got %s", logs[0].Level)
 	}
-	if logs[1].Level != "warn" {
-		t.Errorf("Expected warn level, got %s", logs[1].Level)
+	if logs[1].Level != "error" {
+		t.Errorf("Expected error level, got %s", logs[1].Level)
 	}
 }

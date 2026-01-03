@@ -1,7 +1,6 @@
 package logmanager
 
 import (
-	"bufio"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -53,66 +52,106 @@ var accessLogRegex = regexp.MustCompile(`^(\S+) - (\S+) \[([^\]]+)\] "([^"]+)" (
 const nginxTimeLayout = "02/Jan/2006:15:04:05 -0700"
 const errorLogTimeLayout = "2006/01/02 15:04:05"
 
-func (m *Manager) GetAccessLogs(siteID string, opts LogOptions) ([]LogEntry, error) {
-	filename := filepath.Join(m.LogDir, siteID+".access.log")
+// scanFileBackwards reads the file from the end to the beginning.
+// callback returns false to stop scanning.
+func (m *Manager) scanFileBackwards(filename string, callback func(string) bool) error {
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
-		return []LogEntry{}, nil // Return empty if file doesn't exist yet
+		return nil
 	}
 
 	file, err := os.Open(filename)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer file.Close()
 
-	var entries []LogEntry
-	scanner := bufio.NewScanner(file)
-	
-	// Buffer for lines to process reverse or forward? 
-	// To support "since", we should scan forward. 
-	// To support "limit" (last N), we usually want the end.
-	// Combining: Scan all, filter, then take last N. 
-	// Optimization: If no search/since, seek to end? (Skip for now for simplicity)
+	stat, err := file.Stat()
+	if err != nil {
+		return err
+	}
+	filesize := stat.Size()
+	offset := filesize
+	const bufferSize = 4096
 
-	for scanner.Scan() {
-		line := scanner.Text()
-		
+	var tail []byte
+
+	for offset > 0 {
+		readSize := int64(bufferSize)
+		if offset < readSize {
+			readSize = offset
+		}
+		offset -= readSize
+
+		if _, err := file.Seek(offset, 0); err != nil {
+			return err
+		}
+
+		chunk := make([]byte, readSize)
+		if _, err := file.Read(chunk); err != nil {
+			return err
+		}
+
+		p := len(chunk)
+		for i := len(chunk) - 1; i >= 0; i-- {
+			if chunk[i] == '\n' {
+				line := string(chunk[i+1:p]) + string(tail)
+				if len(line) > 0 {
+					if !callback(line) {
+						return nil
+					}
+				}
+			tail = nil
+			p = i
+			}
+		}
+		tail = append(chunk[:p], tail...)
+	}
+
+	if len(tail) > 0 {
+		callback(string(tail))
+	}
+
+	return nil
+}
+
+func (m *Manager) GetAccessLogs(siteID string, opts LogOptions) ([]LogEntry, error) {
+	var entries []LogEntry
+	filename := filepath.Join(m.LogDir, siteID+".access.log")
+
+	err := m.scanFileBackwards(filename, func(line string) bool {
 		// 1. Basic Search Filter
 		if opts.Search != "" && !strings.Contains(line, opts.Search) {
-			continue
+			return true // continue
 		}
 
 		// 2. Parse
 		matches := accessLogRegex.FindStringSubmatch(line)
 		if len(matches) != 10 {
-			// Failed to parse, maybe just return raw?
-			// For now, skip or include raw.
-			if matches == nil && opts.Search == "" {
-                 // Try to include it if it matches search or no search
-                 // But we can't filter by time if we can't parse.
-                 // Let's skip malformed lines if we have time filter.
-			}
-			continue
+			// Skip malformed lines
+			return true
 		}
 
 		t, err := time.Parse(nginxTimeLayout, matches[3])
 		if err != nil {
-			continue
+			return true
 		}
 
 		// 3. Time Filter
+		// Reading backwards: Time decreases.
+		// If Time < Since, then all remaining logs are older than Since. Stop.
 		if !opts.Since.IsZero() && t.Before(opts.Since) {
-			continue
+			return false
 		}
+		// If Time > Until, this log is too new. Skip it, but older ones might match.
 		if !opts.Until.IsZero() && t.After(opts.Until) {
-			continue
+			return true
 		}
 
 		status, _ := strconv.Atoi(matches[5])
 		bytesSent, _ := strconv.ParseInt(matches[6], 10, 64)
 		reqTime, _ := strconv.ParseFloat(matches[9], 64)
 
-		entry := LogEntry{
+		entries = append(entries, LogEntry{
 			Raw:           line,
 			RemoteAddr:    matches[1],
 			RemoteUser:    matches[2],
@@ -123,77 +162,65 @@ func (m *Manager) GetAccessLogs(siteID string, opts LogOptions) ([]LogEntry, err
 			Referer:       matches[7],
 			UserAgent:     matches[8],
 			RequestTime:   reqTime,
+		})
+
+		// Limit
+		if opts.Limit > 0 && len(entries) >= opts.Limit {
+			return false
 		}
 
-		entries = append(entries, entry)
-	}
+		return true
+	})
 
-	// Apply Limit (Take last N)
-	if opts.Limit > 0 && len(entries) > opts.Limit {
-		entries = entries[len(entries)-opts.Limit:]
-	}
-
-	return entries, nil
+	return entries, err
 }
 
 func (m *Manager) GetErrorLogs(siteID string, opts LogOptions) ([]ErrorLogEntry, error) {
-	filename := filepath.Join(m.LogDir, siteID+".error.log")
-	if _, err := os.Stat(filename); os.IsNotExist(err) {
-		return []ErrorLogEntry{}, nil
-	}
-
-	file, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
 	var entries []ErrorLogEntry
-	scanner := bufio.NewScanner(file)
+	filename := filepath.Join(m.LogDir, siteID+".error.log")
 
-	// Regex for error log
-	// 2025/12/26 10:00:00 [error] ...
-	// Simple split by space usually works for first parts
-	
-	for scanner.Scan() {
-		line := scanner.Text()
-
+	err := m.scanFileBackwards(filename, func(line string) bool {
 		if opts.Search != "" && !strings.Contains(line, opts.Search) {
-			continue
+			return true
 		}
 
 		// Parse timestamp
-		// Format: YYYY/MM/DD HH:MM:SS
-		if len(line) < 19 {
-			continue
+		// Format: YYYY/MM/DD HH:MM:SS (first 19 chars)
+		var t time.Time
+		var err error
+
+		if len(line) >= 19 {
+			t, err = time.Parse(errorLogTimeLayout, line[:19])
 		}
-		timeStr := line[:19]
-		t, err := time.Parse(errorLogTimeLayout, timeStr)
-		if err != nil {
-			// Check if it's a continuation line or different format?
-			// Just include raw if we can't parse time but search matched?
-			// If filtering by time, we must skip.
-			if !opts.Since.IsZero() || !opts.Until.IsZero() {
-				continue
-			}
-		} else {
+		// If line is too short, we can't parse time.
+		// Treat as "unknown time".
+		// If filtering strictly by time, maybe skip?
+		// For now, if we can't parse time, we include it unless strict checks fail.
+
+		if err == nil && !t.IsZero() {
 			if !opts.Since.IsZero() && t.Before(opts.Since) {
-				continue
+				return false
 			}
 			if !opts.Until.IsZero() && t.After(opts.Until) {
-				continue
+				return true
 			}
+		} else if !opts.Since.IsZero() || !opts.Until.IsZero() {
+			// If we have time filters but can't parse time, safe default is to skip?
+			// Or maybe the line is a continuation of a previous error?
+			// Complex error logs (stack traces) might be multi-line.
+			// Backward scanning multi-line logs is hard.
+			// Assumption: One line per log entry or we just treat lines individually.
+			// We'll skip if time is required but missing.
+			return true
 		}
 
-		// Extract Level
-		// Look for [level]
 		level := "unknown"
 		startBracket := strings.Index(line, "[")
 		endBracket := strings.Index(line, "]")
 		if startBracket != -1 && endBracket != -1 && endBracket > startBracket {
 			level = line[startBracket+1 : endBracket]
 		}
-		
+
 		msg := ""
 		if endBracket != -1 && len(line) > endBracket+1 {
 			msg = strings.TrimSpace(line[endBracket+1:])
@@ -207,11 +234,13 @@ func (m *Manager) GetErrorLogs(siteID string, opts LogOptions) ([]ErrorLogEntry,
 			Level:     level,
 			Message:   msg,
 		})
-	}
 
-	if opts.Limit > 0 && len(entries) > opts.Limit {
-		entries = entries[len(entries)-opts.Limit:]
-	}
+		if opts.Limit > 0 && len(entries) >= opts.Limit {
+			return false
+		}
 
-	return entries, nil
+		return true
+	})
+
+	return entries, err
 }
